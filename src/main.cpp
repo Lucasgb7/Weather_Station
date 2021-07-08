@@ -8,17 +8,18 @@
 // Sensor de Temperatura e Umidade
 #define DHTPIN 4
 #define DHTTYPE    DHT11
+DHT_Unified dht(DHTPIN, DHTTYPE);
 // Sensor de Pressão Atmosférica e Temperatura
 #define BMP_SCK  (13)
 #define BMP_MISO (12)
 #define BMP_MOSI (11)
 #define BMP_CS   (10)
+Adafruit_BMP280 bmp;
+byte I2C_ADRESS = 0x76;
+// Sensor de Radiacao Solar
+#define ML8511PIN 34
 
-Adafruit_BMP280 bmp; // I2C
-
-DHT_Unified dht(DHTPIN, DHTTYPE);
-
-uint32_t delayMS;
+uint32_t measurementPeriod = 5000;
 
 void dht11_read(){
   // Obtem um evento de temperatura e mostra o valor
@@ -39,79 +40,86 @@ void dht11_read(){
     Serial.println(F("Error! Umidade!?"));
   }
   else {
-    Serial.print(F("Umidade: "));
+    Serial.print(F("Umidade do ar: "));
     Serial.print(event.relative_humidity);
     Serial.println(F("%"));
   }
 }
 
 void bmp280_read(){
-    Serial.print(F("Temperature = "));
+    Serial.print(F("Temperatura: "));
     Serial.print(bmp.readTemperature());
-    Serial.println(" *C");
+    Serial.println("°C");
 
-    Serial.print(F("Pressure = "));
+    Serial.print(F("Pressao atmosferica: "));
     Serial.print(bmp.readPressure());
-    Serial.println(" Pa");
+    Serial.println("Pa");
 
-    Serial.print(F("Approx altitude = "));
-    Serial.print(bmp.readAltitude(18)); /* Adjusted to local forecast! */
-    Serial.println(" m");
+    Serial.print(F("Altitude~: "));
+    Serial.print(bmp.readAltitude(1013.25)); // pressao atmosferica no nivel do mar  
+    Serial.println("m");
+}
 
-    Serial.println();
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+//Takes an average of readings on a given pin and Returns the average
+int averageAnalogRead(int pinToRead)
+{
+  byte numberOfReadings = 8;
+  unsigned int runningValue = 0; 
+ 
+  for(int x = 0 ; x < numberOfReadings ; x++)
+    runningValue += analogRead(pinToRead);
+  runningValue /= numberOfReadings;
+ 
+  return(runningValue);
+}
+ 
+void ml8511_read(int SensorPIN){
+  int uvLevel = averageAnalogRead(SensorPIN);
+ 
+  float outputVoltage = 3.3 * uvLevel/4095;
+  float uvIntensity = mapfloat(outputVoltage, 0.99, 2.9, 0.0, 15.0);
+ 
+  Serial.print("Intensidade UV: ");
+  Serial.print(uvIntensity);
+  Serial.print("mW/cm^2"); 
 }
 
 void setup() {
   Serial.begin(9600);
-  // Inicializa DHT11
+
+  // Iniciando configuracao do sensor: DHT11
   dht.begin();
-  Serial.println(F("DHTxx Unified Sensor Example"));
-  // Print temperature sensor details.
   sensor_t sensor;
   dht.temperature().getSensor(&sensor);
-  Serial.println(F("------------------------------------"));
-  Serial.println(F("Temperature Sensor"));
-  Serial.print  (F("Sensor Type: ")); Serial.println(sensor.name);
-  Serial.print  (F("Driver Ver:  ")); Serial.println(sensor.version);
-  Serial.print  (F("Unique ID:   ")); Serial.println(sensor.sensor_id);
-  Serial.print  (F("Max Value:   ")); Serial.print(sensor.max_value); Serial.println(F("°C"));
-  Serial.print  (F("Min Value:   ")); Serial.print(sensor.min_value); Serial.println(F("°C"));
-  Serial.print  (F("Resolution:  ")); Serial.print(sensor.resolution); Serial.println(F("°C"));
-  Serial.println(F("------------------------------------"));
-  // Print humidity sensor details.
   dht.humidity().getSensor(&sensor);
-  Serial.println(F("Humidity Sensor"));
-  Serial.print  (F("Sensor Type: ")); Serial.println(sensor.name);
-  Serial.print  (F("Driver Ver:  ")); Serial.println(sensor.version);
-  Serial.print  (F("Unique ID:   ")); Serial.println(sensor.sensor_id);
-  Serial.print  (F("Max Value:   ")); Serial.print(sensor.max_value); Serial.println(F("%"));
-  Serial.print  (F("Min Value:   ")); Serial.print(sensor.min_value); Serial.println(F("%"));
-  Serial.print  (F("Resolution:  ")); Serial.print(sensor.resolution); Serial.println(F("%"));
-  Serial.println(F("------------------------------------"));
-  // Set delay between sensor readings based on sensor details.
-  delayMS = sensor.min_delay / 1000;
 
-  Serial.println(F("BMP280 test"));
-
-  //if (!bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID)) {
-  if (!bmp.begin(0x76)) {
-    Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
-                      "try a different address!"));
+  // Iniciando configuracao do sensor: BMP280
+  if (!bmp.begin(I2C_ADRESS)) {
+    Serial.println(F("Could not find a valid BMP280 sensor!"));
     while (1) delay(10);
-  }
+  } 
+  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     
+                  Adafruit_BMP280::SAMPLING_X2,     
+                  Adafruit_BMP280::SAMPLING_X16,    
+                  Adafruit_BMP280::FILTER_X16,      
+                  Adafruit_BMP280::STANDBY_MS_500); 
 
-  /* Default settings from datasheet. */
-  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
-                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
-                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
-                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+  // Iniciando configuracao do sensor: ML8511
+  pinMode(ML8511PIN, INPUT);
 }
 
 void loop() {
-  // Delay between measurements.
-  delay(delayMS);
+  delay(measurementPeriod);
+  Serial.println("================================");
+  Serial.println("----- DHT11 -----");
   dht11_read();
-  Serial.println("======================");
+  Serial.println("----- BMP280 -----");
   bmp280_read();
+  Serial.println("----- ML8511 -----");
+  ml8511_read(ML8511PIN);
+  Serial.println("\n================================");
 }
