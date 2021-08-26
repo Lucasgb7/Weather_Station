@@ -1,10 +1,12 @@
+#include <Adafruit_BMP280.h>
 #include <Adafruit_Sensor.h>
+#include <ADSWeather.h>
 #include <DHT.h>
 #include <DHT_U.h>
-#include <Wire.h>
+#include <HardwareSerial.h>
 #include <SPI.h>
-#include <Adafruit_BMP280.h>
-#include <ADSWeather.h>
+#include <RoboCore_SMW_SX1276M0.h>
+#include <Wire.h>
 
 // Sensor de Temperatura e Umidade (DHT11)
 #define DHTPIN 4
@@ -32,22 +34,33 @@ int REEDCOUNT = 0;
 #define CALC_INTERVAL 1000
 
 boolean state = false;
-unsigned long lastMillis = 0;
-float mps, kph, windChill;
-int clicked, wspd, wdir, wdirRaw, wchill;
-
-float tempair, tempground;
-int temp, tempin;
-
-unsigned long nextCalc;
-unsigned long timer;
+float mps, kph;
 int windDir;
 int windSpeed;
 int rainAmmount;
 ADSWeather ws1(RAIN_PIN, VANE_PIN, ANEMOMETER_PIN); //This should configure all pins correctly
 
-// Code 
-uint32_t measurementPeriod = 5000;
+// LoRaWAN
+#if !defined(ARDUINO_ESP32_DEV) // ESP32
+#error Use this example with the ESP32
+#endif
+
+HardwareSerial LoRaSerial(2);
+#define RXD2 16
+#define TXD2 17
+
+SMW_SX1276M0 lorawan(LoRaSerial);
+
+CommandResponse response;
+
+const char APPEUI[] = "0000000000000000";
+const char APPKEY[] = "00000000000000000000000000000000";
+
+const unsigned long PAUSE_TIME = 300000; // [ms] (5 min)
+unsigned long timeout;
+
+/*============================= FUNCTIONS =============================*/
+void event_handler(Event);
 
 void dht11_read(){
   // Obtem um evento de temperatura e mostra o valor
@@ -226,7 +239,7 @@ void read_windDirection()
   Serial.print(wdir);
   Serial.println(" °");
 }
-void read_windDirection2()
+void read_windDirection2() // V= 5V; R= 66KOhm;
 {
   wdirRaw = analogRead(VANE_PIN);
 
@@ -256,35 +269,46 @@ void read_windDirection2()
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
-  // Config. DHT11
+  /*=============================== SENSORS ===============================*/
+  // Temperature and Humidty Sensor DHT11
   dht.begin();
   sensor_t sensor;
   dht.temperature().getSensor(&sensor);
   dht.humidity().getSensor(&sensor);
-
-  // Config. BMP280
-  if (!bmp.begin(I2C_ADRESS)) {
-    Serial.println(F("Não foi possível encontrar o sensor BMP280!"));
-    while (1) delay(10);
-  }
-
-  // Config. ML8511
+  // Pressure Sensor BMP280
+  bmp.begin(I2C_ADRESS);
+  // UV Sensor
   pinMode(ML8511PIN, INPUT);
-
-  // Config. Pluviometro e Anemometro/Cata-vento
+  // Rain gauge sensor
+  pinMode (REED, INPUT_PULLUP); //This activates the internal pull up resistor
+  // Wind wane sensor
   pinMode(ANEMOMETER_PIN, INPUT);
-  //pinMode (REED, INPUT_PULLUP); //This activates the internal pull up resistor
-  //attachInterrupt(digitalPinToInterrupt(RAIN_PIN), ws1.countRain, FALLING);
-  //attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), ws1.countAnemometer, FALLING);
-  //nextCalc = millis() + CALC_INTERVAL;
+  /*=============================== LORAWAN ===============================*/
+  Serial.println(F("--- SMW_SX1276M0 Join (OTAA) ---"));
+  
+  // start the UART for the LoRaWAN Bee
+  LoRaSerial.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
+  // set the event handler
+  lorawan.event_listener = &event_handler;
+  Serial.println(F("Handler set"));
+
+  // read the Device EUI
+  char deveui[16];
+  response = lorawan.get_DevEUI(deveui);
+  if(response == CommandResponse::OK){
+    Serial.print(F("DevEUI: "));
+    Serial.write((uint8_t *)deveui, 16);
+    Serial.println();
+  } else {
+    Serial.println(F("Error getting the Device EUI"));
+  }
 }
 
 void loop() {
 
-  /*
   Serial.println("================================");
   Serial.println("----- DHT11 -----");
   dht11_read();
@@ -292,13 +316,17 @@ void loop() {
   bmp280_read();
   Serial.println("----- ML8511 -----");
   ml8511_read(ML8511PIN);
-  */
-  //Serial.println("================================");
-  //Serial.println("----- ANEMOMETRO -----");
-  //read_windSpeed();
+  Serial.println("----- ANEMOMETRO -----");
+  read_windSpeed();
   Serial.println("----- CATA-VENTO -----");
   read_windDirection2();
   Serial.println("================================");
   delay(2000);
-  //delay(measurementPeriod); // tempo de mensuracao
+}
+
+void event_handler(Event type){
+  // check if join event
+  if(type == Event::JOINED){
+    Serial.println(F("Joined"));
+  }
 }
