@@ -5,39 +5,39 @@
 #include <DHT_U.h>
 #include <HardwareSerial.h>
 #include <SPI.h>
-#include <RoboCore_SMW_SX1276M0.h>
+#include "RoboCore_SMW_SX1276M0.h"
 #include <Wire.h>
 
-// Sensor de Temperatura e Umidade (DHT11)
+// Temperature/Humidity Sensor (DHT11)
 #define DHTPIN 4
 #define DHTTYPE    DHT11
 DHT_Unified dht(DHTPIN, DHTTYPE);
 
-// Sensor de Pressao Atmosferica e Temperatura (BMP280)
-#define BMP_SDA 21
+// Temperature/Atmosferic Pressure Sensor (BMP280) 
+// using SPI interface
+#define BMP_SDA 21 
 #define BMP_SCL 22
 Adafruit_BMP280 bmp;
-byte I2C_ADRESS = 0x76; // endereco adquirido executando o arquivo '../test/getI2C.ino'.
+byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 
-// Sensor de Radiacao Solar (ML8511)
+// UV Radiation Sensor (ML8511)
 #define ML8511PIN 15
 
-// Pluviometro (PDB10U)
+// Rain Sensor (PDB10U)
 #define RAIN_PIN 35
 int val = 0;
 int old_val = 0;
 int REEDCOUNT = 0;
 
-// Anemometro e Cata-vento (MISOL WH-SP-WD e MISOL WH-SP-WS01)
+// Anemometer and Wind Vane (MISOL WH-SP-WD e MISOL WH-SP-WS01)
 #define ANEMOMETER_PIN 26
 #define VANE_PIN 34
 #define CALC_INTERVAL 1000
 
 boolean state = false;
-float mps, kph;
-int windDir;
-int windSpeed;
-int rainAmmount;
+unsigned long lastMillis = 0;
+float mps, kph, windChill;
+int clicked, wspd, wdir, wdirRaw, wchill;
 ADSWeather ws1(RAIN_PIN, VANE_PIN, ANEMOMETER_PIN); //This should configure all pins correctly
 
 // LoRaWAN
@@ -62,12 +62,13 @@ unsigned long timeout;
 /*============================= FUNCTIONS =============================*/
 void event_handler(Event);
 
+// Temperature/Humidity reading 
 void dht11_read(){
-  // Obtem um evento de temperatura e mostra o valor
+  // Get a temperature event and its value
   sensors_event_t event;
   dht.temperature().getEvent(&event);
   if (isnan(event.temperature)) {
-    Serial.println(F("Error! Temperatura!?"));
+    Serial.println(F("Error! Temperature!?"));
   }
   else {
     Serial.print(F("Temperatura: "));
@@ -75,7 +76,7 @@ void dht11_read(){
     Serial.println(F(" °C"));
   }
 
-  // Obtem um evento de umidade e mostra o valor
+  // Get a humidity event and its value
   dht.humidity().getEvent(&event);
   if (isnan(event.relative_humidity)) {
     Serial.println(F("Error! Umidade!?"));
@@ -86,7 +87,7 @@ void dht11_read(){
     Serial.println(F(" %"));
   }
 }
-
+// Atmosferic Pressure reading
 void bmp280_read(){
     Serial.print(F("Temperatura: "));
     Serial.print(bmp.readTemperature());
@@ -100,12 +101,12 @@ void bmp280_read(){
     Serial.print(bmp.readAltitude(1019)); // pressao atmosferica no nivel do mar (variavel)
     Serial.println(" m");
 }
-
+// Map for UV reading
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-
+// Returns average value from UV reading
 int averageAnalogRead(int pinToRead)
 {
   byte numberOfReadings = 8;
@@ -117,7 +118,7 @@ int averageAnalogRead(int pinToRead)
  
   return(runningValue);
 }
- 
+// UV Radiation reading
 void ml8511_read(int SensorPIN){
   int uvLevel = averageAnalogRead(SensorPIN);
  
@@ -129,7 +130,7 @@ void ml8511_read(int SensorPIN){
   Serial.println(" mW/cm^2"); 
 }
 
-void pluviometro_read(int INPUTPIN){
+void rain_read(int INPUTPIN){
   val = digitalRead(INPUTPIN);      // Lê o Status do Reed Switch
   if ((val == LOW) && (old_val == HIGH)) {   // Verefica se o Status mudou
     delay(10);                   // Atraso colocado para lidar com qualquer "salto" no switch.
@@ -162,33 +163,6 @@ void pluviometro_read(int INPUTPIN){
   else {
     old_val = val;              //If the status hasn't changed then do nothing
   }
-}
-
-void ws1_read(){
-  ws1.update(); // Atualiza os valores WS1
-
-  rainAmmount = ws1.getRain();
-  windSpeed = ws1.getWindSpeed();
-
-  Serial.print("Velocidade do Vento: ");
-  Serial.print(windSpeed / 10); // componente inteira da velocidade
-  Serial.print('.');
-  Serial.print(windSpeed % 10); // componente fracionaria da velocidade
-  Serial.println(" km/h");
-
-  Serial.print("Gusting at: ");
-  Serial.print(ws1.getWindGust() / 10);
-  Serial.print('.');
-  Serial.print(ws1.getWindGust() % 10);
-  Serial.println(" km/h");
-
-  Serial.print("Direção do Vento: ");
-  Serial.print(ws1.getWindDirection());
-  Serial.println(" º");
-
-  Serial.print("Precipitação: ");
-  Serial.print((float) rainAmmount / 1000);
-  Serial.println(" mm");
 }
 
 void read_windSpeed()
@@ -268,6 +242,8 @@ void read_windDirection2() // V= 5V; R= 66KOhm;
   Serial.println(" °");
 }
 
+
+
 void setup() {
   Serial.begin(115200);
 
@@ -282,7 +258,7 @@ void setup() {
   // UV Sensor
   pinMode(ML8511PIN, INPUT);
   // Rain gauge sensor
-  pinMode (REED, INPUT_PULLUP); //This activates the internal pull up resistor
+  pinMode (RAIN_PIN, INPUT_PULLUP); //This activates the internal pull up resistor
   // Wind wane sensor
   pinMode(ANEMOMETER_PIN, INPUT);
   /*=============================== LORAWAN ===============================*/
@@ -308,7 +284,6 @@ void setup() {
 }
 
 void loop() {
-
   Serial.println("================================");
   Serial.println("----- DHT11 -----");
   dht11_read();
@@ -316,6 +291,8 @@ void loop() {
   bmp280_read();
   Serial.println("----- ML8511 -----");
   ml8511_read(ML8511PIN);
+  Serial.println("----- PLUVIOMETRO -----");
+  rain_read(RAIN_PIN);
   Serial.println("----- ANEMOMETRO -----");
   read_windSpeed();
   Serial.println("----- CATA-VENTO -----");
