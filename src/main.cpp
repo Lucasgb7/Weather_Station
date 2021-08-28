@@ -1,6 +1,5 @@
 #include <Adafruit_BMP280.h>
 #include <Adafruit_Sensor.h>
-#include <ADSWeather.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
 #include <HardwareSerial.h>
@@ -26,6 +25,7 @@ byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 
 // Rain Sensor (PDB10U)
 #define RAIN_PIN 35
+const unsigned long RAIN_TIME = 5000;
 int val = 0;
 int old_val = 0;
 int REEDCOUNT = 0;
@@ -36,10 +36,10 @@ int REEDCOUNT = 0;
 #define CALC_INTERVAL 1000
 
 boolean state = false;
+const unsigned long WINDSPEED_TIME = 5000;
 unsigned long lastMillis = 0;
-float mps, kph, windChill;
-int clicked, wspd, wdir, wdirRaw, wchill;
-ADSWeather ws1(RAIN_PIN, VANE_PIN, ANEMOMETER_PIN); //This should configure all pins correctly
+float mps, kph;
+int clicked, wspd, wdir, wdirRaw;
 
 // LoRaWAN settings
 #define RXD2 16
@@ -114,70 +114,68 @@ float getUV(int SensorPIN)
 // PDB10U - Rain Gauge
 float getRain(int SensorPIN)
 {
-  val = digitalRead(SensorPIN);
-  if ((val == LOW) && (old_val == HIGH)) {   
-    delay(10);              
-    REEDCOUNT = REEDCOUNT + 1;   
-    old_val = val;              
-  }
-  if ((val == HIGH) && (old_val == LOW)) {   
-  delay(10);
-  REEDCOUNT = REEDCOUNT + 1;
-  old_val = val;
- 
-  } 
-  else {
-    old_val = val;
+  lastMillis = xTaskGetTickCount();
+  // It takes RAIN_TIME seconds to measure
+  while(xTaskGetTickCount() - lastMillis < RAIN_TIME){
+    val = digitalRead(SensorPIN);
+    if (((val == LOW) && (old_val == HIGH)) || ((val == HIGH) && (old_val == LOW))) {           
+      REEDCOUNT = REEDCOUNT + 1;   
+      old_val = val;              
+    } else {
+      old_val = val;
+    }
   }
   return REEDCOUNT * 0.5;
 }
 
 // MISOL WH-SP-WS01 - Anemometer (Wind Speed Sensor)
-int getWindSpeed()
+float getWindSpeed()
 {
-    lastMillis = xTaskGetTickCount();
-    while(xTaskGetTickCount() - lastMillis < 10000){
-        if(digitalRead(ANEMOMETER_PIN) == HIGH) if(state == false){
-            delay(50);
-            clicked++;
-            state = true;
-        }
-        if(digitalRead(ANEMOMETER_PIN) == LOW) state = false;
+  lastMillis = xTaskGetTickCount();
+  // It takes WINDSPEED_TIME seconds to measure wind speed
+  while(xTaskGetTickCount() - lastMillis < WINDSPEED_TIME){
+    if(digitalRead(ANEMOMETER_PIN) == HIGH) if(state == false){
+        delay(50);
+        clicked++;
+        state = true;
     }
+    if(digitalRead(ANEMOMETER_PIN) == LOW) state = false;
+  }
 
-    mps = clicked * 0.0333; // m/s
-    kph = mps * 3.6;        // km/h
-    wspd = int(mps*10);
-    clicked = 0;
+  mps = clicked * 0.0333; // m/s
+  kph = mps * 3.6;        // km/h
+  wspd = int(mps*10);
+  clicked = 0;
 
-    return wspd; // m/s
+  return kph;
 }
 
 // MISOL WH-SP-WD - Wind Vane (Wind Directtion Sensor)
 int getWindDirection()
 {
   wdirRaw = analogRead(VANE_PIN);
-
-  if(wdirRaw > 1916 && wdirRaw <= 2273) wdir = 0;           // 33k  - 0º    - N
-  else if (wdirRaw > 435  && wdirRaw <= 645) wdir = 22.5;   // 6k57 - 22.5º - NNE
-  else if (wdirRaw > 645  && wdirRaw <= 850) wdir = 45;     // 8k2  - 45º   - NE
-  else if (wdirRaw > 70 && wdirRaw <= 90) wdir = 67.5;      // 891  - 67.5º - ENE
-  else if (wdirRaw > 90 && wdirRaw <= 115) wdir = 90;       // 1k   - 90º   - E
-  else if (wdirRaw >= 0 && wdirRaw <= 70) wdir = 112.5;     // 688  - 112.5º- ESE
-  else if (wdirRaw > 173 && wdirRaw <= 250) wdir = 135;     // 2k2  - 135º  - SE
-  else if (wdirRaw > 115 && wdirRaw <= 173) wdir = 157.5;   // 1k41 - 157.5º- SSE
-  else if (wdirRaw > 325 && wdirRaw <= 645) wdir = 180;     // 3k9  - 180º  - S
-  else if (wdirRaw > 250 && wdirRaw <= 325) wdir = 202.5;   // 3k14 - 202.5º- SSW
-  else if (wdirRaw > 1170 && wdirRaw <= 1480) wdir = 225;   // 16k  - 225º  - SW
-  else if (wdirRaw > 850 && wdirRaw <= 1170) wdir = 247.5;  // 14k12- 247.5º- WSW 
-  else if (wdirRaw > 3347 && wdirRaw <= 4095) wdir = 270;   // 120k - 270º  - W
-  else if (wdirRaw > 2273 && wdirRaw <= 2917) wdir = 292.5; // 42k12- 292.5º- WNW
-  else if (wdirRaw > 2917 && wdirRaw <= 3347) wdir = 315;   // 64k9 - 315º  - NW
-  else if (wdirRaw > 1480 && wdirRaw <= 1916) wdir = 337.5; // 21k88- 337.5º- NNW
+  // V_REF = 3,3V; R_REF = 10K
+  if(wdirRaw > 3225 && wdirRaw <= 3495) wdir = 0;             // 33k  - 0º    - N
+  else if (wdirRaw > 1759  && wdirRaw <= 1879) wdir = 22.5;   // 6k57 - 22.5º - NNE
+  else if (wdirRaw > 1879  && wdirRaw <= 2298) wdir = 45;     // 8k2  - 45º   - NE
+  else if (wdirRaw > 324 && wdirRaw <= 383) wdir = 67.5;      // 891  - 67.5º - ENE
+  else if (wdirRaw > 383 && wdirRaw <= 476) wdir = 90;        // 1k   - 90º   - E
+  else if (wdirRaw >= 0 && wdirRaw <= 324) wdir = 112.5;      // 688  - 112.5º- ESE
+  else if (wdirRaw > 674 && wdirRaw <= 930) wdir = 135;       // 2k2  - 135º  - SE
+  else if (wdirRaw > 476 && wdirRaw <= 674) wdir = 157.5;     // 1k41 - 157.5º- SSE
+  else if (wdirRaw > 1152 && wdirRaw <= 1502) wdir = 180;     // 3k9  - 180º  - S
+  else if (wdirRaw > 930 && wdirRaw <= 1152) wdir = 202.5;    // 3k14 - 202.5º- SSW
+  else if (wdirRaw > 2664 && wdirRaw <= 2887) wdir = 225;     // 16k  - 225º  - SW
+  else if (wdirRaw > 2298 && wdirRaw <= 2664) wdir = 247.5;   // 14k12- 247.5º- WSW 
+  else if (wdirRaw > 3969 && wdirRaw <= 4095) wdir = 270;     // 120k - 270º  - W
+  else if (wdirRaw > 3495 && wdirRaw <= 3715) wdir = 292.5;   // 42k12- 292.5º- WNW
+  else if (wdirRaw > 3715 && wdirRaw <= 3969) wdir = 315;     // 64k9 - 315º  - NW
+  else if (wdirRaw > 2887 && wdirRaw <= 3225) wdir = 337.5;   // 21k88- 337.5º- NNW
 
   return wdir;
 }
 
+// Blink function for LoRaWAN status
 void blink(int LED_PIN)
 {
   digitalWrite(LED_PIN, LOW);
@@ -208,6 +206,33 @@ void sendData()
   blink(ONBOARD_LED); // reporting a sent status on LED
 }
 
+void printData()
+{
+  Serial.println("===========================================================");
+  
+  Serial.println("---------- DHT11 ---------");
+  Serial.print("Temperature: "); Serial.print(getTemperature()); Serial.println(" °C");
+  Serial.print("Humidity: "); Serial.print(getHumidity()); Serial.println(" %");
+  
+  Serial.println("--------- BMP280 ---------");
+  Serial.print("Atmospheric Pressure: "); Serial.print(getPressure()); Serial.println(" hPa");
+  
+  Serial.println("--------- ML8511 ---------");
+  Serial.print("UV Intensity: "); Serial.print(getUV(UV_PIN)); Serial.println(" mW/cm²");
+  
+  Serial.println("--------- PDB10U ---------");
+  Serial.print("Precipitation: "); Serial.print(getRain(RAIN_PIN)); Serial.println(" mm");
+  
+  Serial.println("--------- WH-SP-WS01 ---------");
+  Serial.print("Wind Speed: "); Serial.print(getWindSpeed()); Serial.println(" km/h");
+  
+  Serial.println("---------  WH-SP-WD ---------");
+  Serial.print("Wind Direction: "); Serial.print(getWindDirection()); Serial.println(" °");
+
+
+  Serial.println("===========================================================");
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(ONBOARD_LED, OUTPUT);
@@ -223,6 +248,7 @@ void setup() {
   // Wind wane sensor
   pinMode(ANEMOMETER_PIN, INPUT);
   /*=============================== LORAWAN ===============================*/
+  /*
   Serial.println(F("--- SMW_SX1276M0 Join (OTAA) ---"));
   
   // start the UART for the LoRaWAN Bee
@@ -274,11 +300,12 @@ void setup() {
   // Comecamos as tentativas para conexao na rede LoRaWAN da ATC
   Serial.println(F("Joining the network"));
   lorawan.join();
-
+  */
 }
 
 void loop() 
 {
+  /*
   // "Escutamos" se algo vem do modulo LoRaWAN Bee
   lorawan.listen();
 
@@ -296,10 +323,11 @@ void loop()
     // Se nao conseguir se conectar a rede LoRaWAN, imprime no 
     // Monitor Serial "." a cada 5 segundos
     if(timeout < millis()){
-      Serial.println('...');
+      Serial.println("...");
       timeout = millis() + 5000; // 5 s
     }
   }
+  */
 }
 
 void event_handler(Event type){
