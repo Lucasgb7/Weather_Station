@@ -50,12 +50,13 @@ HardwareSerial LoRaSerial(2);
 SMW_SX1276M0 lorawan(LoRaSerial);
 CommandResponse response;
 
-// Keys are included by #include "../lib/keys.h"
+// Keys are included from #include "../lib/keys.h"
 //const char APPEUI[] = "0000000000000000";
 //const char APPKEY[] = "00000000000000000000000000000000";
 
 const unsigned long PAUSE_TIME = 300000; // [ms] (5 min)
 unsigned long timeout;
+int count = 0;
 
 /*================================ FUNCTIONS ================================*/
 // Prototype
@@ -186,26 +187,7 @@ void blink(int LED_PIN)
   delay(500);
 }
 
-void sendData()
-{
-  DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
-  jsonData["T"] = getTemperature();
-  jsonData["H"] = getHumidity();
-  jsonData["P"] = getPressure();
-  jsonData["U"] = getUV(UV_PIN);
-  jsonData["D"] = getWindDirection();
-  jsonData["S"] = getWindSpeed();
-  jsonData["R"] = getRain(RAIN_PIN);
-
-  String payload = "";
-  serializeJson(jsonData, payload);
-  Serial.print("Data sent: ");
-  Serial.println(payload);
-
-  lorawan.sendT(1, payload);
-  blink(ONBOARD_LED); // reporting a sent status on LED
-}
-
+// Print variables readings on Serial Monitor
 void printData()
 {
   Serial.println("===========================================================");
@@ -233,6 +215,27 @@ void printData()
   Serial.println("===========================================================");
 }
 
+// Sending JSON data by LoRaWAN module
+void sendData()
+{
+  DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
+  jsonData["T"] = getTemperature();
+  jsonData["H"] = getHumidity();
+  jsonData["P"] = getPressure();
+  jsonData["U"] = getUV(UV_PIN);
+  jsonData["D"] = getWindDirection();
+  jsonData["S"] = getWindSpeed();
+  jsonData["R"] = getRain(RAIN_PIN);
+
+  String payload = "";
+  serializeJson(jsonData, payload);
+  Serial.print("Data sent: ");
+  Serial.println(payload);
+
+  lorawan.sendT(1, payload);
+  blink(ONBOARD_LED); // reporting a sent status on LED
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(ONBOARD_LED, OUTPUT);
@@ -248,17 +251,14 @@ void setup() {
   // Wind wane sensor
   pinMode(ANEMOMETER_PIN, INPUT);
   /*=============================== LORAWAN ===============================*/
-  /*
-  Serial.println(F("--- SMW_SX1276M0 Join (OTAA) ---"));
-  
-  // start the UART for the LoRaWAN Bee
+  // Start the UART for the LoRaWAN Bee
   LoRaSerial.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
-  // set the event handler
+  // Set the event handler
   lorawan.event_listener = &event_handler;
   Serial.println(F("Handler set"));
 
-  // Lemos o DEVEUI do modulo LoRaWAN Bee e mostramos no Monitor Serial
+  // Read the Device EUI
   char deveui[16];
   response = lorawan.get_DevEUI(deveui);
   if(response == CommandResponse::OK){
@@ -269,7 +269,7 @@ void setup() {
     Serial.println(F("Error getting the Device EUI"));
   }
 
-  // Configuramos a chave APPEUI no modulo e mostramos no Monitor Serial
+  // Set the Application EUI
   response = lorawan.set_AppEUI(APPEUI);
   if(response == CommandResponse::OK){
     Serial.print(F("Application EUI set ("));
@@ -279,7 +279,7 @@ void setup() {
     Serial.println(F("Error setting the Application EUI"));
   }
 
-  // Configuramos a chave APPKEY no modulo e mostramos no Monitor Serial
+  // Set the Application Key
   response = lorawan.set_AppKey(APPKEY);
   if(response == CommandResponse::OK){
     Serial.print(F("Application Key set ("));
@@ -289,7 +289,7 @@ void setup() {
     Serial.println(F("Error setting the Application Key"));
   }
 
-  // Configuramos o modo de operacao do LoRaWAN Bee para OTAA
+  // Set Join Mode to OTAA
   response = lorawan.set_JoinMode(SMW_SX1276M0_JOIN_MODE_OTAA);
   if(response == CommandResponse::OK){
     Serial.println(F("Mode set to OTAA"));
@@ -297,37 +297,30 @@ void setup() {
     Serial.println(F("Error setting the join mode"));
   }
 
-  // Comecamos as tentativas para conexao na rede LoRaWAN da ATC
+  // Join the network
   Serial.println(F("Joining the network"));
   lorawan.join();
-  */
 }
 
 void loop() 
 {
-  /*
-  // "Escutamos" se algo vem do modulo LoRaWAN Bee
+  // Listen for incoming data from the module
   lorawan.listen();
-
-  // Se esta conectado a rede entra nesta rotina
+  // Send a message
   if(lorawan.isConnected()){
-    
-   	// A cada PAUSE_TIME milisegundos, acessamos a funcao de envio de dados
+   	// Connected, send a message here every <PAUSE_TIME> seconds
     if(timeout < millis()){
-
       sendData();
-      
       timeout = millis() + PAUSE_TIME;
     }
   } else {
-    // Se nao conseguir se conectar a rede LoRaWAN, imprime no 
-    // Monitor Serial "." a cada 5 segundos
+    // Show some activity
     if(timeout < millis()){
       Serial.println("...");
+      // Update the timout
       timeout = millis() + 5000; // 5 s
     }
   }
-  */
 }
 
 void event_handler(Event type){
