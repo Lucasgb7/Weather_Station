@@ -44,7 +44,7 @@ int clicked, wspd, wdir, wdirRaw;
 // LoRaWAN settings
 #define RXD2 16
 #define TXD2 17
-#define ONBOARD_LED 2 // LoRaWAN Status LED
+#define STATUS_LED 2 // LoRaWAN Status LED
 
 HardwareSerial LoRaSerial(2);
 SMW_SX1276M0 lorawan(LoRaSerial);
@@ -218,6 +218,7 @@ void printData()
 // Sending JSON data by LoRaWAN module
 void sendData()
 {
+  blink(STATUS_LED); // reporting a sent status on LED
   DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
   jsonData["T"] = getTemperature();
   jsonData["H"] = getHumidity();
@@ -233,12 +234,11 @@ void sendData()
   Serial.println(payload);
 
   lorawan.sendT(1, payload);
-  blink(ONBOARD_LED); // reporting a sent status on LED
 }
 
 void setup() {
   Serial.begin(115200);
-  pinMode(ONBOARD_LED, OUTPUT);
+  pinMode(STATUS_LED, OUTPUT);
   /*=============================== SENSORS ===============================*/
   // Temperature and Humidty Sensor DHT11
   dht.begin();
@@ -300,6 +300,7 @@ void setup() {
   // Join the network
   Serial.println(F("Joining the network"));
   lorawan.join();
+
 }
 
 void loop() 
@@ -326,7 +327,7 @@ void loop()
 void event_handler(Event type){
   // check if join event
   if(type == Event::JOINED){
+    digitalWrite(STATUS_LED, HIGH);
     Serial.println(F("Joined"));
-    digitalWrite(ONBOARD_LED, HIGH);
   }
 }
