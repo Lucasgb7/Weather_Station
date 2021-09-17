@@ -51,8 +51,6 @@ SMW_SX1276M0 lorawan(LoRaSerial);
 CommandResponse response;
 
 // Keys are included from #include "../lib/keys.h"
-//const char APPEUI[] = "0000000000000000";
-//const char APPKEY[] = "00000000000000000000000000000000";
 
 const unsigned long PAUSE_TIME = 300000; // [ms] (5 min)
 unsigned long timeout;
@@ -220,19 +218,21 @@ void sendData()
 {
   blink(STATUS_LED); // reporting a sent status on LED
   DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
-  jsonData["T"] = getTemperature();
-  jsonData["H"] = getHumidity();
-  jsonData["P"] = getPressure();
-  jsonData["U"] = getUV(UV_PIN);
-  jsonData["D"] = getWindDirection();
-  jsonData["S"] = getWindSpeed();
-  jsonData["R"] = getRain(RAIN_PIN);
+
+  jsonData["T"] = 23;//getTemperature();
+  jsonData["H"] = 78;//getHumidity();
+  jsonData["P"] = 1019.3;//getPressure();
+  jsonData["U"] = 3.92;//getUV(UV_PIN);
+  jsonData["D"] = 180;//getWindDirection();
+  jsonData["S"] = 35;//getWindSpeed();
+  jsonData["R"] = 7.5;//getRain(RAIN_PIN);
 
   String payload = "";
   serializeJson(jsonData, payload);
   Serial.print("Data sent: ");
   Serial.println(payload);
 
+  // Send a text message
   lorawan.sendT(1, payload);
 }
 
@@ -251,56 +251,65 @@ void setup() {
   // Wind wane sensor
   pinMode(ANEMOMETER_PIN, INPUT);
   /*=============================== LORAWAN ===============================*/
+  // Update Serial Monitor
+  delay(1000);
   // Start the UART for the LoRaWAN Bee
   LoRaSerial.begin(115200, SERIAL_8N1, RXD2, TXD2);
-
   // Set the event handler
   lorawan.event_listener = &event_handler;
   Serial.println(F("Handler set"));
 
-  // Read the Device EUI
-  char deveui[16];
-  response = lorawan.get_DevEUI(deveui);
+  // Set the Device EUI
+  response = lorawan.set_DevEUI(DEVEUI);
   if(response == CommandResponse::OK){
     Serial.print(F("DevEUI: "));
-    Serial.write((uint8_t *)deveui, 16);
+    Serial.write((uint8_t *)DEVEUI, 16);
     Serial.println();
   } else {
-    Serial.println(F("Error getting the Device EUI"));
+    Serial.println(F("Error Setting the Device EUI"));
   }
 
-  // Set the Application EUI
-  response = lorawan.set_AppEUI(APPEUI);
+  // Set the Device Address
+  response = lorawan.set_DevAddr(DEVADDR);
   if(response == CommandResponse::OK){
-    Serial.print(F("Application EUI set ("));
-    Serial.write((uint8_t *)APPEUI, 16);
+    Serial.print(F("Device Address set ("));
+    Serial.write((uint8_t *)DEVADDR, 8);
     Serial.println(')');
   } else {
-    Serial.println(F("Error setting the Application EUI"));
+    Serial.println(F("Error setting the Device Address"));
   }
 
-  // Set the Application Key
-  response = lorawan.set_AppKey(APPKEY);
+  // set the Application Session Key
+  response = lorawan.set_AppSKey(APPSKEY);
   if(response == CommandResponse::OK){
-    Serial.print(F("Application Key set ("));
-    Serial.write((uint8_t *)APPKEY, 32);
+    Serial.print(F("Application Session Key set ("));
+    Serial.write((uint8_t *)APPSKEY, 32);
     Serial.println(')');
   } else {
-    Serial.println(F("Error setting the Application Key"));
+    Serial.println(F("Error setting the Application Session Key"));
   }
 
-  // Set Join Mode to OTAA
-  response = lorawan.set_JoinMode(SMW_SX1276M0_JOIN_MODE_OTAA);
+  // set the Network Session Key
+  response = lorawan.set_NwkSKey(NWKSKEY);
   if(response == CommandResponse::OK){
-    Serial.println(F("Mode set to OTAA"));
+    Serial.print(F("Network Session Key set ("));
+    Serial.write((uint8_t *)NWKSKEY, 32);
+    Serial.println(')');
+  } else {
+    Serial.println(F("Error setting the Network Session Key"));
+  }
+
+  // Set join mode to ABP
+  response = lorawan.set_JoinMode(SMW_SX1276M0_JOIN_MODE_ABP);
+  if(response == CommandResponse::OK){
+    Serial.println(F("Mode set to ABP"));
   } else {
     Serial.println(F("Error setting the join mode"));
   }
 
-  // Join the network
-  Serial.println(F("Joining the network"));
+  // Join the network (not really necessary in ABP)
+  Serial.println(F("Jo  ining the network"));
   lorawan.join();
-
 }
 
 void loop() 
