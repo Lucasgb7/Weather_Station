@@ -52,7 +52,7 @@ CommandResponse response;
 
 // Keys are included from #include "../lib/keys.h"
 
-const unsigned long PAUSE_TIME = 300000; // [ms] (5 min)
+const unsigned long PAUSE_TIME = 180000; // [ms] (3 min)
 unsigned long timeout;
 int count = 0;
 
@@ -219,13 +219,13 @@ void sendData()
   blink(STATUS_LED); // reporting a sent status on LED
   DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
 
-  jsonData["T"] = 23;//getTemperature();
-  jsonData["H"] = 78;//getHumidity();
-  jsonData["P"] = 1019.3;//getPressure();
-  jsonData["U"] = 3.92;//getUV(UV_PIN);
-  jsonData["D"] = 180;//getWindDirection();
+  jsonData["T"] = 25;//getTemperature();
+  jsonData["H"] = 88;//getHumidity();
+  jsonData["P"] = 1020;//getPressure();
+  jsonData["U"] = 5;//getUV(UV_PIN);
+  jsonData["D"] = 270;//getWindDirection();
   jsonData["S"] = 35;//getWindSpeed();
-  jsonData["R"] = 7.5;//getRain(RAIN_PIN);
+  jsonData["R"] = 7;//getRain(RAIN_PIN);
 
   String payload = "";
   serializeJson(jsonData, payload);
@@ -258,7 +258,7 @@ void setup() {
   // Set the event handler
   lorawan.event_listener = &event_handler;
   Serial.println(F("Handler set"));
-
+  
   // Set the Device EUI
   response = lorawan.set_DevEUI(DEVEUI);
   if(response == CommandResponse::OK){
@@ -268,7 +268,6 @@ void setup() {
   } else {
     Serial.println(F("Error Setting the Device EUI"));
   }
-
   // Set the Device Address
   response = lorawan.set_DevAddr(DEVADDR);
   if(response == CommandResponse::OK){
@@ -298,7 +297,6 @@ void setup() {
   } else {
     Serial.println(F("Error setting the Network Session Key"));
   }
-
   // Set join mode to ABP
   response = lorawan.set_JoinMode(SMW_SX1276M0_JOIN_MODE_ABP);
   if(response == CommandResponse::OK){
@@ -308,12 +306,15 @@ void setup() {
   }
 
   // Join the network (not really necessary in ABP)
-  Serial.println(F("Jo  ining the network"));
+  Serial.println(F("Joining the network"));
   lorawan.join();
 }
 
 void loop() 
 {
+  printData();
+  delay(5000);
+  /*
   // Listen for incoming data from the module
   lorawan.listen();
   // Send a message
@@ -331,6 +332,7 @@ void loop()
       timeout = millis() + 5000; // 5 s
     }
   }
+  */
 }
 
 void event_handler(Event type){
