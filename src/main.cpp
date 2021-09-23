@@ -25,7 +25,7 @@ byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 
 // Rain Sensor (PDB10U)
 #define RAIN_PIN 35
-const unsigned long RAIN_TIME = 5000;
+const unsigned long RAIN_TIME = 1000;
 int val = 0;
 int old_val = 0;
 int REEDCOUNT = 0;
@@ -117,14 +117,15 @@ float getRain(int SensorPIN)
   // It takes RAIN_TIME seconds to measure
   while(xTaskGetTickCount() - lastMillis < RAIN_TIME){
     val = digitalRead(SensorPIN);
-    if (((val == LOW) && (old_val == HIGH)) || ((val == HIGH) && (old_val == LOW))) {           
-      REEDCOUNT = REEDCOUNT + 1;   
-      old_val = val;              
+    if (((val == LOW) && (old_val == HIGH)) || ((val == HIGH) && (old_val == LOW))) {  
+      delay(10);  // waiting for counting update
+      REEDCOUNT = REEDCOUNT + 1; // total counting
+      old_val = val;
     } else {
       old_val = val;
     }
   }
-  return REEDCOUNT * 0.5;
+  return REEDCOUNT * 0.5; // every 'clock' = 0.5mm
 }
 
 // MISOL WH-SP-WS01 - Anemometer (Wind Speed Sensor)
