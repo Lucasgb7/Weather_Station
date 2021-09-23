@@ -6245,13 +6245,13 @@ DIN A4, landscape with extra doc field</description>
 <attribute name="NAME" x="92.4814" y="123.19" size="1.778" layer="95" rot="R90"/>
 <attribute name="VALUE" x="97.282" y="123.19" size="1.778" layer="96" rot="R90"/>
 </instance>
-<instance part="R2" gate="G$1" x="137.16" y="96.52" smashed="yes" rot="R90">
-<attribute name="NAME" x="135.6614" y="92.71" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="140.462" y="92.71" size="1.778" layer="96" rot="R90"/>
+<instance part="R2" gate="G$1" x="137.16" y="127" smashed="yes" rot="R270">
+<attribute name="NAME" x="138.6586" y="130.81" size="1.778" layer="95" rot="R270"/>
+<attribute name="VALUE" x="133.858" y="130.81" size="1.778" layer="96" rot="R270"/>
 </instance>
-<instance part="R3" gate="G$1" x="149.86" y="96.52" smashed="yes" rot="R90">
-<attribute name="NAME" x="148.3614" y="92.71" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="153.162" y="92.71" size="1.778" layer="96" rot="R90"/>
+<instance part="R3" gate="G$1" x="149.86" y="127" smashed="yes" rot="R90">
+<attribute name="NAME" x="148.3614" y="123.19" size="1.778" layer="95" rot="R90"/>
+<attribute name="VALUE" x="153.162" y="123.19" size="1.778" layer="96" rot="R90"/>
 </instance>
 <instance part="JP1" gate="A" x="182.88" y="111.76" smashed="yes">
 <attribute name="NAME" x="176.53" y="142.875" size="1.778" layer="95"/>
@@ -6279,7 +6279,13 @@ DIN A4, landscape with extra doc field</description>
 <segment>
 <pinref part="R1" gate="G$1" pin="1"/>
 <pinref part="ESP32" gate="G$1" pin="IO35"/>
-<wire x1="93.98" y1="121.92" x2="93.98" y2="114.3" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="121.92" x2="93.98" y2="119.38" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="119.38" x2="93.98" y2="114.3" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="119.38" x2="106.68" y2="119.38" width="0.1524" layer="91"/>
+<wire x1="106.68" y1="119.38" x2="106.68" y2="134.62" width="0.1524" layer="91"/>
+<junction x="93.98" y="119.38"/>
+<pinref part="JP1" gate="A" pin="3"/>
+<wire x1="106.68" y1="134.62" x2="180.34" y2="134.62" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$4" class="0">
@@ -6356,27 +6362,22 @@ DIN A4, landscape with extra doc field</description>
 <wire x1="180.34" y1="99.06" x2="175.26" y2="99.06" width="0.1524" layer="91"/>
 <wire x1="175.26" y1="99.06" x2="175.26" y2="114.3" width="0.1524" layer="91"/>
 <junction x="175.26" y="114.3"/>
-<wire x1="175.26" y1="139.7" x2="149.86" y2="139.7" width="0.1524" layer="91"/>
 <junction x="175.26" y="139.7"/>
-<wire x1="149.86" y1="139.7" x2="60.96" y2="139.7" width="0.1524" layer="91"/>
+<wire x1="175.26" y1="139.7" x2="137.16" y2="139.7" width="0.1524" layer="91"/>
+<wire x1="137.16" y1="139.7" x2="60.96" y2="139.7" width="0.1524" layer="91"/>
 <wire x1="60.96" y1="139.7" x2="60.96" y2="76.2" width="0.1524" layer="91"/>
 <wire x1="60.96" y1="76.2" x2="68.58" y2="76.2" width="0.1524" layer="91"/>
 <pinref part="ESP32" gate="G$1" pin="3V3"/>
 <wire x1="68.58" y1="76.2" x2="68.58" y2="78.74" width="0.1524" layer="91"/>
 <wire x1="68.58" y1="66.04" x2="68.58" y2="76.2" width="0.1524" layer="91"/>
 <junction x="68.58" y="76.2"/>
-<pinref part="R3" gate="G$1" pin="2"/>
-<wire x1="149.86" y1="101.6" x2="149.86" y2="116.84" width="0.1524" layer="91"/>
-<junction x="149.86" y="139.7"/>
-<pinref part="ESP32" gate="G$1" pin="IO34"/>
-<wire x1="149.86" y1="116.84" x2="149.86" y2="139.7" width="0.1524" layer="91"/>
-<wire x1="149.86" y1="116.84" x2="96.52" y2="116.84" width="0.1524" layer="91"/>
-<wire x1="96.52" y1="116.84" x2="96.52" y2="114.3" width="0.1524" layer="91"/>
-<junction x="149.86" y="116.84"/>
 <wire x1="175.26" y1="66.04" x2="175.26" y2="99.06" width="0.1524" layer="91"/>
 <junction x="175.26" y="99.06"/>
 <pinref part="J2" gate="G$1" pin="3"/>
 <wire x1="175.26" y1="66.04" x2="198.12" y2="66.04" width="0.1524" layer="91"/>
+<pinref part="R2" gate="G$1" pin="1"/>
+<wire x1="137.16" y1="132.08" x2="137.16" y2="139.7" width="0.1524" layer="91"/>
+<junction x="137.16" y="139.7"/>
 </segment>
 </net>
 <net name="N$5" class="0">
@@ -6397,65 +6398,6 @@ DIN A4, landscape with extra doc field</description>
 <wire x1="83.82" y1="60.96" x2="83.82" y2="78.74" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$12" class="0">
-<segment>
-<pinref part="R2" gate="G$1" pin="1"/>
-<wire x1="137.16" y1="63.5" x2="137.16" y2="91.44" width="0.1524" layer="91"/>
-<wire x1="198.12" y1="63.5" x2="137.16" y2="63.5" width="0.1524" layer="91"/>
-<pinref part="J2" gate="G$1" pin="2"/>
-</segment>
-</net>
-<net name="N$2" class="0">
-<segment>
-<pinref part="R2" gate="G$1" pin="2"/>
-<wire x1="137.16" y1="101.6" x2="137.16" y2="121.92" width="0.1524" layer="91"/>
-<wire x1="137.16" y1="121.92" x2="83.82" y2="121.92" width="0.1524" layer="91"/>
-<pinref part="ESP32" gate="G$1" pin="IO26"/>
-<wire x1="83.82" y1="121.92" x2="83.82" y2="114.3" width="0.1524" layer="91"/>
-<pinref part="POWER" gate="A" pin="3"/>
-<wire x1="73.66" y1="144.78" x2="73.66" y2="137.16" width="0.1524" layer="91"/>
-<wire x1="73.66" y1="137.16" x2="71.12" y2="137.16" width="0.1524" layer="91"/>
-<pinref part="ESP32" gate="G$1" pin="GND@1"/>
-<wire x1="71.12" y1="137.16" x2="71.12" y2="134.62" width="0.1524" layer="91"/>
-<pinref part="JP1" gate="A" pin="3"/>
-<wire x1="71.12" y1="134.62" x2="71.12" y2="114.3" width="0.1524" layer="91"/>
-<wire x1="180.34" y1="134.62" x2="172.72" y2="134.62" width="0.1524" layer="91"/>
-<junction x="71.12" y="134.62"/>
-<pinref part="R1" gate="G$1" pin="2"/>
-<wire x1="172.72" y1="134.62" x2="137.16" y2="134.62" width="0.1524" layer="91"/>
-<wire x1="137.16" y1="134.62" x2="93.98" y2="134.62" width="0.1524" layer="91"/>
-<wire x1="93.98" y1="134.62" x2="71.12" y2="134.62" width="0.1524" layer="91"/>
-<wire x1="93.98" y1="132.08" x2="93.98" y2="134.62" width="0.1524" layer="91"/>
-<junction x="93.98" y="134.62"/>
-<pinref part="JP1" gate="A" pin="7"/>
-<wire x1="180.34" y1="124.46" x2="172.72" y2="124.46" width="0.1524" layer="91"/>
-<wire x1="172.72" y1="124.46" x2="172.72" y2="134.62" width="0.1524" layer="91"/>
-<junction x="172.72" y="134.62"/>
-<pinref part="JP1" gate="A" pin="13"/>
-<wire x1="180.34" y1="109.22" x2="172.72" y2="109.22" width="0.1524" layer="91"/>
-<wire x1="172.72" y1="109.22" x2="172.72" y2="124.46" width="0.1524" layer="91"/>
-<junction x="172.72" y="124.46"/>
-<pinref part="JP1" gate="A" pin="19"/>
-<wire x1="180.34" y1="93.98" x2="172.72" y2="93.98" width="0.1524" layer="91"/>
-<wire x1="172.72" y1="93.98" x2="172.72" y2="109.22" width="0.1524" layer="91"/>
-<junction x="172.72" y="109.22"/>
-<wire x1="137.16" y1="121.92" x2="137.16" y2="134.62" width="0.1524" layer="91"/>
-<junction x="137.16" y="121.92"/>
-<junction x="137.16" y="134.62"/>
-<wire x1="198.12" y1="68.58" x2="172.72" y2="68.58" width="0.1524" layer="91"/>
-<wire x1="172.72" y1="68.58" x2="172.72" y2="93.98" width="0.1524" layer="91"/>
-<junction x="172.72" y="93.98"/>
-<pinref part="J2" gate="G$1" pin="4"/>
-</segment>
-</net>
-<net name="N$14" class="0">
-<segment>
-<pinref part="R3" gate="G$1" pin="1"/>
-<wire x1="149.86" y1="91.44" x2="149.86" y2="60.96" width="0.1524" layer="91"/>
-<wire x1="198.12" y1="60.96" x2="149.86" y2="60.96" width="0.1524" layer="91"/>
-<pinref part="J2" gate="G$1" pin="1"/>
-</segment>
-</net>
 <net name="N$15" class="0">
 <segment>
 <wire x1="185.42" y1="142.24" x2="198.12" y2="142.24" width="0.1524" layer="91"/>
@@ -6467,6 +6409,69 @@ DIN A4, landscape with extra doc field</description>
 <wire x1="185.42" y1="101.6" x2="198.12" y2="101.6" width="0.1524" layer="91"/>
 <wire x1="198.12" y1="101.6" x2="198.12" y2="81.28" width="0.1524" layer="91"/>
 <wire x1="198.12" y1="81.28" x2="185.42" y2="81.28" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="N$13" class="0">
+<segment>
+<pinref part="ESP32" gate="G$1" pin="GND@1"/>
+<pinref part="POWER" gate="A" pin="3"/>
+<wire x1="73.66" y1="144.78" x2="73.66" y2="137.16" width="0.1524" layer="91"/>
+<wire x1="73.66" y1="137.16" x2="71.12" y2="137.16" width="0.1524" layer="91"/>
+<wire x1="71.12" y1="137.16" x2="71.12" y2="134.62" width="0.1524" layer="91"/>
+<pinref part="R1" gate="G$1" pin="2"/>
+<wire x1="71.12" y1="134.62" x2="71.12" y2="114.3" width="0.1524" layer="91"/>
+<wire x1="71.12" y1="134.62" x2="93.98" y2="134.62" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="134.62" x2="93.98" y2="132.08" width="0.1524" layer="91"/>
+<junction x="71.12" y="134.62"/>
+<wire x1="93.98" y1="134.62" x2="93.98" y2="137.16" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="137.16" x2="149.86" y2="137.16" width="0.1524" layer="91"/>
+<junction x="93.98" y="134.62"/>
+<pinref part="JP1" gate="A" pin="7"/>
+<wire x1="149.86" y1="137.16" x2="172.72" y2="137.16" width="0.1524" layer="91"/>
+<wire x1="180.34" y1="124.46" x2="172.72" y2="124.46" width="0.1524" layer="91"/>
+<pinref part="JP1" gate="A" pin="13"/>
+<wire x1="180.34" y1="109.22" x2="172.72" y2="109.22" width="0.1524" layer="91"/>
+<wire x1="172.72" y1="109.22" x2="172.72" y2="124.46" width="0.1524" layer="91"/>
+<pinref part="JP1" gate="A" pin="19"/>
+<wire x1="180.34" y1="93.98" x2="172.72" y2="93.98" width="0.1524" layer="91"/>
+<wire x1="172.72" y1="93.98" x2="172.72" y2="109.22" width="0.1524" layer="91"/>
+<junction x="172.72" y="109.22"/>
+<wire x1="198.12" y1="68.58" x2="172.72" y2="68.58" width="0.1524" layer="91"/>
+<wire x1="172.72" y1="68.58" x2="172.72" y2="93.98" width="0.1524" layer="91"/>
+<junction x="172.72" y="93.98"/>
+<pinref part="J2" gate="G$1" pin="4"/>
+<wire x1="172.72" y1="137.16" x2="172.72" y2="124.46" width="0.1524" layer="91"/>
+<junction x="172.72" y="124.46"/>
+<pinref part="R3" gate="G$1" pin="2"/>
+<wire x1="149.86" y1="132.08" x2="149.86" y2="137.16" width="0.1524" layer="91"/>
+<junction x="149.86" y="137.16"/>
+</segment>
+</net>
+<net name="N$2" class="0">
+<segment>
+<pinref part="ESP32" gate="G$1" pin="IO26"/>
+<wire x1="83.82" y1="114.3" x2="83.82" y2="121.92" width="0.1524" layer="91"/>
+<wire x1="83.82" y1="121.92" x2="132.08" y2="121.92" width="0.1524" layer="91"/>
+<wire x1="132.08" y1="121.92" x2="132.08" y2="60.96" width="0.1524" layer="91"/>
+<pinref part="J2" gate="G$1" pin="1"/>
+<wire x1="132.08" y1="60.96" x2="198.12" y2="60.96" width="0.1524" layer="91"/>
+<pinref part="R2" gate="G$1" pin="2"/>
+<wire x1="137.16" y1="121.92" x2="132.08" y2="121.92" width="0.1524" layer="91"/>
+<junction x="132.08" y="121.92"/>
+</segment>
+</net>
+<net name="N$12" class="0">
+<segment>
+<pinref part="ESP32" gate="G$1" pin="IO34"/>
+<wire x1="96.52" y1="114.3" x2="96.52" y2="116.84" width="0.1524" layer="91"/>
+<wire x1="96.52" y1="116.84" x2="144.78" y2="116.84" width="0.1524" layer="91"/>
+<wire x1="144.78" y1="116.84" x2="144.78" y2="63.5" width="0.1524" layer="91"/>
+<pinref part="J2" gate="G$1" pin="2"/>
+<wire x1="144.78" y1="63.5" x2="198.12" y2="63.5" width="0.1524" layer="91"/>
+<pinref part="R3" gate="G$1" pin="1"/>
+<wire x1="149.86" y1="121.92" x2="149.86" y2="116.84" width="0.1524" layer="91"/>
+<wire x1="149.86" y1="116.84" x2="144.78" y2="116.84" width="0.1524" layer="91"/>
+<junction x="144.78" y="116.84"/>
 </segment>
 </net>
 </nets>
