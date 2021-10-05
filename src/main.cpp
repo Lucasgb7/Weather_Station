@@ -25,7 +25,7 @@ byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 
 // Rain Sensor (PDB10U)
 #define RAIN_PIN 35
-const unsigned long RAIN_TIME = 1000;
+const unsigned long RAIN_TIME = 3000;
 int val = 0;
 int old_val = 0;
 int REEDCOUNT = 0;
@@ -40,6 +40,7 @@ const unsigned long WINDSPEED_TIME = 5000;
 unsigned long lastMillis = 0;
 float mps, kph;
 int clicked, wspd, wdir, wdirRaw;
+float minTemperature = 0, maxTemperature = 0;
 
 // LoRaWAN settings
 #define RXD2 16
@@ -56,6 +57,15 @@ const unsigned long PAUSE_TIME = 180000; // [ms] (3 min)
 unsigned long timeout;
 int count = 0;
 
+#define DATA_FREQUENCY_LENGTH 4
+
+struct Data {
+  float temperature;
+};
+RTC_DATA_ATTR int bootCount = 0;
+RTC_DATA_ATTR struct Data myData[DATA_FREQUENCY_LENGTH]; // 4x15min = 1 hour
+#define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
+#define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
 /*================================ FUNCTIONS ================================*/
 // Prototype
 void event_handler(Event);
@@ -237,21 +247,10 @@ void sendData()
   lorawan.sendT(1, payload);
 }
 
-void setup() {
-  Serial.begin(115200);
+// Set LoRaWAN parameters
+void setupLoRaWAN()
+{
   pinMode(STATUS_LED, OUTPUT);
-  /*=============================== SENSORS ===============================*/
-  // Temperature and Humidty Sensor DHT11
-  dht.begin();
-  // Pressure Sensor BMP280
-  bmp.begin(I2C_ADRESS);
-  // UV Sensor
-  pinMode(UV_PIN, INPUT);
-  // Rain gauge sensor
-  pinMode (RAIN_PIN, INPUT_PULLUP); //This activates the internal pull up resistor
-  // Wind wane sensor
-  pinMode(ANEMOMETER_PIN, INPUT);
-  /*=============================== LORAWAN ===============================*/
   // Update Serial Monitor
   delay(1000);
   // Start the UART for the LoRaWAN Bee
@@ -305,35 +304,123 @@ void setup() {
   } else {
     Serial.println(F("Error setting the join mode"));
   }
-
   // Join the network (not really necessary in ABP)
   Serial.println(F("Joining the network"));
   lorawan.join();
 }
 
-void loop() 
+// Print variables readings on Serial Monitor
+void printData_Stored(int bootCount)
 {
-  printData();
-  delay(5000);
-  /*
-  // Listen for incoming data from the module
-  lorawan.listen();
-  // Send a message
-  if(lorawan.isConnected()){
-   	// Connected, send a message here every <PAUSE_TIME> seconds
-    if(timeout < millis()){
-      sendData();
-      timeout = millis() + PAUSE_TIME;
-    }
-  } else {
-    // Show some activity
-    if(timeout < millis()){
-      Serial.println("...");
-      // Update the timout
-      timeout = millis() + 5000; // 5 s
+  Serial.println("===========================================================");
+  
+  Serial.println("---------- DHT11 ---------");
+  Serial.print("Temperature: "); Serial.print(myData[bootCount].temperature); Serial.println(" °C");
+  Serial.print("Humidity: "); Serial.print(myData[bootCount].humidity); Serial.println(" %");
+  
+  Serial.println("--------- BMP280 ---------");
+  Serial.print("Atmospheric Pressure: "); Serial.print(myData[bootCount].pressure); Serial.println(" hPa");
+  
+  Serial.println("--------- ML8511 ---------");
+  Serial.print("UV Intensity: "); Serial.print(myData[bootCount].uv); Serial.println(" mW/cm²");
+  
+  Serial.println("--------- PDB10U ---------");
+  Serial.print("Precipitation: "); Serial.print(myData[bootCount].rain); Serial.println(" mm");
+  
+  Serial.println("--------- WH-SP-WS01 ---------");
+  Serial.print("Wind Speed: "); Serial.print(myData[bootCount].windSpeed); Serial.println(" km/h");
+  
+  Serial.println("---------  WH-SP-WD ---------");
+  Serial.print("Wind Direction: "); Serial.print(myData[bootCount].windDirection); Serial.println(" °");
+}
+
+void readData(int bootCount)
+{
+  myData[bootCount].temperature = getTemperature();
+  myData[bootCount].humidity = getHumidity();
+  myData[bootCount].pressure = getPressure();
+  myData[bootCount].uv = getUV(UV_PIN);
+  myData[bootCount].rain = getRain(RAIN_PIN);
+  myData[bootCount].windDirection = getWindDirection();
+  myData[bootCount].windSpeed = getWindSpeed();
+}
+
+void temperatureReading()
+{
+  // Get the maximum and minimum registred temperature 
+  minTemperature = myData[0].temperature;
+  maxTemperature = myData[1].temperature;
+  for (int i = 0; i < 4; i++){
+    if (myData[i].temperature < minTemperature){
+      minTemperature = myData[i].temperature;
+    } else if (myData[i].temperature > maxTemperature){
+      maxTemperature = myData[i].temperature;
     }
   }
-  */
+}
+
+// Sending JSON data by LoRaWAN module
+void sendData2()
+{
+  blink(STATUS_LED); // reporting a sent status on LED
+  DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
+
+  jsonData["T"] = (int) myData[DATA_FREQUENCY_LENGTH - 1].temperature;
+  jsonData["H"] = (int) getHumidity();
+  jsonData["P"] = (int) getPressure();
+  jsonData["U"] = (int) getUV(UV_PIN);
+  jsonData["D"] = (int) getWindDirection();
+  jsonData["S"] = (int) getWindSpeed();
+  jsonData["R"] = (int) getRain(RAIN_PIN);
+
+  String payload = "";
+  serializeJson(jsonData, payload);
+  Serial.print("Data sent: ");
+  Serial.println(payload);
+
+  // Send a text message
+  lorawan.sendT(1, payload);
+}
+
+
+void setup() {
+  Serial.begin(115200);
+  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+  /*=============================== SENSORS ===============================*/
+  // Temperature and Humidty Sensor DHT11
+  dht.begin();
+  // Pressure Sensor BMP280
+  bmp.begin(I2C_ADRESS);
+  // UV Sensor
+  pinMode(UV_PIN, INPUT);
+  // Rain gauge sensor
+  pinMode (RAIN_PIN, INPUT_PULLUP); //This activates the internal pull up resistor
+  // Wind wane sensor
+  pinMode(ANEMOMETER_PIN, INPUT);
+  /*=============================== READING DATA ===============================*/
+  readData(bootCount);
+  printData_Stored(bootCount);
+  bootCount++;
+  /*=============================== LORAWAN ===============================*/
+  if (bootCount > DATA_FREQUENCY_LENGTH - 1){
+    setupLoRaWAN();
+  }
+}
+
+void loop() 
+{
+  // Check every 1 hour
+  if(bootCount > DATA_FREQUENCY_LENGTH-1){
+    bootCount = 0;
+    // Listen from server message
+    lorawan.listen();
+    if(lorawan.isConnected()){
+      sendData2();
+    }
+  }
+  Serial.println("Going to sleep now...");
+  Serial.flush();
+  esp_deep_sleep_start();
 }
 
 void event_handler(Event type){
