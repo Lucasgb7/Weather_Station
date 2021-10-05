@@ -53,11 +53,11 @@ CommandResponse response;
 
 // Keys are included from #include "../lib/keys.h"
 
-const unsigned long PAUSE_TIME = 180000; // [ms] (3 min)
+const unsigned long PAUSE_TIME = 60000; // [ms] (3 min)
 unsigned long timeout;
 int count = 0;
 
-#define DATA_FREQUENCY_LENGTH 4
+#define DATA_FREQUENCY_LENGTH 2
 
 struct Data {
   float temperature;
@@ -65,7 +65,7 @@ struct Data {
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR struct Data myData[DATA_FREQUENCY_LENGTH]; // 4x15min = 1 hour
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
+#define TIME_TO_SLEEP  10        /* Time ESP32 will go to sleep (in seconds) */
 /*================================ FUNCTIONS ================================*/
 // Prototype
 void event_handler(Event);
@@ -230,13 +230,13 @@ void sendData()
   blink(STATUS_LED); // reporting a sent status on LED
   DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
 
-  jsonData["T"] = 25;//getTemperature();
-  jsonData["H"] = 88;//getHumidity();
-  jsonData["P"] = 1020;//getPressure();
-  jsonData["U"] = 5;//getUV(UV_PIN);
+  jsonData["T"] = 19;//getTemperature();
+  jsonData["H"] = 76;//getHumidity();
+  jsonData["P"] = 1019;//getPressure();
+  jsonData["U"] = 3;//getUV(UV_PIN);
   jsonData["D"] = 270;//getWindDirection();
   jsonData["S"] = 35;//getWindSpeed();
-  jsonData["R"] = 7;//getRain(RAIN_PIN);
+  jsonData["R"] = 14;//getRain(RAIN_PIN);
 
   String payload = "";
   serializeJson(jsonData, payload);
@@ -311,46 +311,21 @@ void setupLoRaWAN()
 
 // Print variables readings on Serial Monitor
 void printData_Stored(int bootCount)
-{
-  Serial.println("===========================================================");
-  
-  Serial.println("---------- DHT11 ---------");
+{ 
   Serial.print("Temperature: "); Serial.print(myData[bootCount].temperature); Serial.println(" °C");
-  Serial.print("Humidity: "); Serial.print(myData[bootCount].humidity); Serial.println(" %");
-  
-  Serial.println("--------- BMP280 ---------");
-  Serial.print("Atmospheric Pressure: "); Serial.print(myData[bootCount].pressure); Serial.println(" hPa");
-  
-  Serial.println("--------- ML8511 ---------");
-  Serial.print("UV Intensity: "); Serial.print(myData[bootCount].uv); Serial.println(" mW/cm²");
-  
-  Serial.println("--------- PDB10U ---------");
-  Serial.print("Precipitation: "); Serial.print(myData[bootCount].rain); Serial.println(" mm");
-  
-  Serial.println("--------- WH-SP-WS01 ---------");
-  Serial.print("Wind Speed: "); Serial.print(myData[bootCount].windSpeed); Serial.println(" km/h");
-  
-  Serial.println("---------  WH-SP-WD ---------");
-  Serial.print("Wind Direction: "); Serial.print(myData[bootCount].windDirection); Serial.println(" °");
 }
 
 void readData(int bootCount)
 {
   myData[bootCount].temperature = getTemperature();
-  myData[bootCount].humidity = getHumidity();
-  myData[bootCount].pressure = getPressure();
-  myData[bootCount].uv = getUV(UV_PIN);
-  myData[bootCount].rain = getRain(RAIN_PIN);
-  myData[bootCount].windDirection = getWindDirection();
-  myData[bootCount].windSpeed = getWindSpeed();
 }
 
 void temperatureReading()
 {
   // Get the maximum and minimum registred temperature 
   minTemperature = myData[0].temperature;
-  maxTemperature = myData[1].temperature;
-  for (int i = 0; i < 4; i++){
+  maxTemperature = myData[0].temperature;
+  for (int i = 0; i < DATA_FREQUENCY_LENGTH-1; i++){
     if (myData[i].temperature < minTemperature){
       minTemperature = myData[i].temperature;
     } else if (myData[i].temperature > maxTemperature){
@@ -363,15 +338,15 @@ void temperatureReading()
 void sendData2()
 {
   blink(STATUS_LED); // reporting a sent status on LED
-  DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
+  DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(3));
 
-  jsonData["T"] = (int) myData[DATA_FREQUENCY_LENGTH - 1].temperature;
+  jsonData["T"] = (int) getTemperature();
   jsonData["H"] = (int) getHumidity();
   jsonData["P"] = (int) getPressure();
-  jsonData["U"] = (int) getUV(UV_PIN);
-  jsonData["D"] = (int) getWindDirection();
-  jsonData["S"] = (int) getWindSpeed();
-  jsonData["R"] = (int) getRain(RAIN_PIN);
+  //jsonData["U"] = (int) getUV(UV_PIN);
+  //jsonData["D"] = (int) getWindDirection();
+  //jsonData["S"] = (int) getWindSpeed();
+  //jsonData["R"] = (int) getRain(RAIN_PIN);
 
   String payload = "";
   serializeJson(jsonData, payload);
@@ -385,7 +360,7 @@ void sendData2()
 
 void setup() {
   Serial.begin(115200);
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+  //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   /*=============================== SENSORS ===============================*/
   // Temperature and Humidty Sensor DHT11
   dht.begin();
@@ -398,18 +373,20 @@ void setup() {
   // Wind wane sensor
   pinMode(ANEMOMETER_PIN, INPUT);
   /*=============================== READING DATA ===============================*/
-  readData(bootCount);
-  printData_Stored(bootCount);
-  bootCount++;
+  //readData(bootCount);
+  //printData_Stored(bootCount);
+  //bootCount++;
   /*=============================== LORAWAN ===============================*/
-  if (bootCount > DATA_FREQUENCY_LENGTH - 1){
-    setupLoRaWAN();
-  }
+  //if (bootCount > DATA_FREQUENCY_LENGTH - 1){
+  //}
+  setupLoRaWAN();
 }
 
+/*
 void loop() 
 {
   // Check every 1 hour
+  
   if(bootCount > DATA_FREQUENCY_LENGTH-1){
     bootCount = 0;
     // Listen from server message
@@ -418,9 +395,37 @@ void loop()
       sendData2();
     }
   }
+  lorawan.listen();
+  if(lorawan.isConnected()){
+    Serial.println("Reading data...");
+    sendData2();
+  }
   Serial.println("Going to sleep now...");
   Serial.flush();
-  esp_deep_sleep_start();
+  //esp_deep_sleep_start();
+}
+*/
+
+void loop() {
+  // listen for incoming data from the module
+  lorawan.listen();
+
+  // send a message
+  if(lorawan.isConnected()){
+    if(timeout < millis()){
+      sendData();
+      // update the timeout
+      timeout = millis() + PAUSE_TIME;
+    }
+  } else {
+    if(timeout < millis()){
+      // show some activity
+      Serial.println('.');
+    
+      // update the timeout
+      timeout = millis() + 5000; // 5 s
+    }
+  }
 }
 
 void event_handler(Event type){
