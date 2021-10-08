@@ -8,6 +8,7 @@
         "vector": "cpp",
         "initializer_list": "cpp",
         "random": "cpp",
-        "limits": "cpp"
+        "limits": "cpp",
+        "string_view": "cpp"
     }
 }

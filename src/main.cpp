@@ -268,6 +268,17 @@ void setupLoRaWAN()
   } else {
     Serial.println(F("Error Setting the Device EUI"));
   }
+
+  // set the Application EUI
+  response = lorawan.set_AppEUI(APPEUI);
+  if(response == CommandResponse::OK){
+    Serial.print(F("Application EUI set ("));
+    Serial.write((uint8_t *)APPEUI, 16);
+    Serial.println(')');
+  } else {
+    Serial.println(F("Error setting the Application EUI"));
+  }
+
   // Set the Device Address
   response = lorawan.set_DevAddr(DEVADDR);
   if(response == CommandResponse::OK){
@@ -299,7 +310,7 @@ void setupLoRaWAN()
   }
   // set the LoRaMAC Region
   response = lorawan.set_Region(REGION_AU915);
-  if(response == CommandResponse::OK){
+  if(response != CommandResponse::ERROR){
     Serial.print(F("LoRaMAC Region set ("));
     Serial.write(REGION_AU915);
     Serial.println(')');
@@ -307,6 +318,37 @@ void setupLoRaWAN()
     Serial.println(F("Error setting the LoRaMAC Region"));
   }
 
+  // set the Auto Data Rate (ADR) Configuration
+  response = lorawan.set_ADR(SMW_SX1276M0_ADR_ON);
+  if(response == CommandResponse::OK){
+    Serial.print(F("Auto Data Rate ("));
+    Serial.write(SMW_SX1276M0_ADR_ON);
+    Serial.println(')');
+  } else {
+    Serial.println(F("Error setting the Auto Data Rate"));
+  }
+
+  /*
+  // Set the delay between the end of the TX and the Rx Window 1 in ms
+  response = lorawan.set_RX1DL(5000);
+  if(response == CommandResponse::OK){
+    Serial.print(F("Delay RX1 ("));
+    Serial.print(5000);
+    Serial.println(')');
+  } else {
+    Serial.println(F("Error setting the Delay RX1"));
+  }
+
+  // Set the delay between the end of the TX and the Rx Window 1 in ms
+  response = lorawan.set_RX2DL(6000);
+  if(response == CommandResponse::OK){
+    Serial.print(F("Delay RX2 ("));
+    Serial.print(6000);
+    Serial.println(')');
+  } else {
+    Serial.println(F("Error setting the Delay RX2"));
+  }
+  */
   // Set join mode to ABP
   response = lorawan.set_JoinMode(SMW_SX1276M0_JOIN_MODE_ABP);
   if(response == CommandResponse::OK){
@@ -387,39 +429,10 @@ void setup() {
   //printData_Stored(bootCount);
   //bootCount++;
   /*=============================== LORAWAN ===============================*/
-  //if (bootCount > DATA_FREQUENCY_LENGTH - 1){
-  //}
   setupLoRaWAN();
 }
 
-/*
-void loop() 
-{
-  // Check every 1 hour
-  
-  if(bootCount > DATA_FREQUENCY_LENGTH-1){
-    bootCount = 0;
-    // Listen from server message
-    lorawan.listen();
-    if(lorawan.isConnected()){
-      sendData2();
-    }
-  }
-  lorawan.listen();
-  if(lorawan.isConnected()){
-    Serial.println("Reading data...");
-    sendData2();
-  }
-  Serial.println("Going to sleep now...");
-  Serial.flush();
-  //esp_deep_sleep_start();
-}
-*/
-
 void loop() {
-  printData();
-  delay(5000);
-  /*
   // listen for incoming data from the module
   lorawan.listen();
 
@@ -439,7 +452,6 @@ void loop() {
       timeout = millis() + 5000; // 5 s
     }
   }
-  */
 }
 
 void event_handler(Event type){
