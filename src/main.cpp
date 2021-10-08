@@ -297,6 +297,16 @@ void setupLoRaWAN()
   } else {
     Serial.println(F("Error setting the Network Session Key"));
   }
+  // set the LoRaMAC Region
+  response = lorawan.set_Region(REGION_AU915);
+  if(response == CommandResponse::OK){
+    Serial.print(F("LoRaMAC Region set ("));
+    Serial.write(REGION_AU915);
+    Serial.println(')');
+  } else {
+    Serial.println(F("Error setting the LoRaMAC Region"));
+  }
+
   // Set join mode to ABP
   response = lorawan.set_JoinMode(SMW_SX1276M0_JOIN_MODE_ABP);
   if(response == CommandResponse::OK){
@@ -407,6 +417,9 @@ void loop()
 */
 
 void loop() {
+  printData();
+  delay(5000);
+  /*
   // listen for incoming data from the module
   lorawan.listen();
 
@@ -426,6 +439,7 @@ void loop() {
       timeout = millis() + 5000; // 5 s
     }
   }
+  */
 }
 
 void event_handler(Event type){
