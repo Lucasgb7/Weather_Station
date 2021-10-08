@@ -1239,6 +1239,29 @@ CommandResponse SMW_SX1276M0::set_Region(uint8_t region){
 }
 
 // --------------------------------------------------
+// Set the delay between the end of the TX and the Rx Window 1 in ms
+//  @param (delay) : the data to be sent [uint32_t]
+//  @returns the type of the response [CommandResponse]
+CommandResponse SMW_SX1276M0:: set_RX1DL(uint32_t delay){
+  char data[] = { (delay + '0') , CHAR_EOS}; // convert to ASCII character
+  // send the command and read the response
+  _send_command(CMD_RX1DL, 1, data);
+  CommandResponse res = _read_response(SMW_SX1276M0_TIMEOUT_WRITE); // this command takes almost 1 s to reply
+
+  return res;
+}
+// --------------------------------------------------
+// Set the delay between the end of the TX and the Rx Window 2 in ms
+//  @param (delay) : the data to be sent [uint32_t]
+//  @returns the type of the response [CommandResponse]
+CommandResponse SMW_SX1276M0:: set_RX2DL(uint32_t delay){
+  char data[] = { (delay + '0') , CHAR_EOS}; // convert to ASCII character
+  // send the command and read the response
+  _send_command(CMD_RX2DL, 1, data);
+  CommandResponse res = _read_response(SMW_SX1276M0_TIMEOUT_WRITE); // this command takes almost 1 s to reply
+
+  return res;
+}
 
 // --------------------------------------------------
 

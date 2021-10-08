@@ -90,8 +90,11 @@ const char* const CMD_RESET = "RESET"; // Reset (9.2.1)
 const char* const CMD_VERSION = "VER"; // Version (9.2.3)
 const char* const CMD_SLEEP = "SLEEP"; // Alarm (9.2.6)
 const char* const CMD_ALARM = "ALARM"; // Alarm (9.2.7)
-const char* const CMD_REGION = "REGION"; // REGION
 const char* const CMD_ECHO = "ECHO"; // Echo (9.2.10)
+
+const char* const CMD_REGION = "REGION"; // REGION
+const char* const CMD_RX1DL = "RX1DL"; // RX1DL
+const char* const CMD_RX2DL = "RX2DL"; // RX2DL
 
 const char* const RSPNS_OK = "OK";
 const char* const RSPNS_FAILED = "Failed";
@@ -198,7 +201,6 @@ class SMW_SX1276M0 {
     CommandResponse set_ADR(uint8_t);
     CommandResponse set_AJoin(uint8_t);
     CommandResponse set_Alarm(uint32_t);
-    CommandResponse set_Region(uint8_t);
     CommandResponse set_AppEUI(const char *);
     CommandResponse set_AppKey(const char *);
     CommandResponse set_AppSKey(const char *);
@@ -210,6 +212,10 @@ class SMW_SX1276M0 {
     CommandResponse set_NwkSKey(const char *);
     void setPinReset(int16_t);
     CommandResponse sleep(uint32_t = 0);
+
+    CommandResponse set_Region(uint8_t);
+    CommandResponse set_RX1DL(uint32_t);
+    CommandResponse set_RX2DL(uint32_t);
 
 #ifdef SMW_SX1276M0_DEBUG
     void setDebugger(Stream *);
