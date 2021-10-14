@@ -13,8 +13,7 @@
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
-// Temperature/Atmosferic Pressure Sensor (BMP280) 
-// using SPI interface
+// Temperature/Atmosferic Pressure Sensor (BMP280) (using SPI interface)
 #define BMP_SDA 21 
 #define BMP_SCL 22
 Adafruit_BMP280 bmp;
@@ -23,29 +22,26 @@ byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 // UV Radiation Sensor (ML8511)
 #define UV_PIN 15
 
-// Rain Sensor (PDB10U)
+// Rain Gauge (PDB10U)
 #define RAIN_PIN 35
-const unsigned long RAIN_TIME = 3000;
-int val = 0;
-int old_val = 0;
-int REEDCOUNT = 0;
+int val = 0, old_val = 0;
+RTC_DATA_ATTR int REEDCOUNT = 0;
+const unsigned long RAIN_TIME = 15*60*1000; // measuring time (ms)
 
 // Anemometer and Wind Vane (MISOL WH-SP-WD e MISOL WH-SP-WS01)
 #define ANEMOMETER_PIN 26
 #define VANE_PIN 34
 #define CALC_INTERVAL 1000
-
 boolean state = false;
-const unsigned long WINDSPEED_TIME = 5000;
+const unsigned long WINDSPEED_TIME = 5000; // measuring time (ms)
 unsigned long lastMillis = 0;
 float mps, kph;
 int clicked, wspd, wdir, wdirRaw;
-float minTemperature = 0, maxTemperature = 0;
 
-// LoRaWAN settings
+// Module LoRaWAN Bee V2 settings
 #define RXD2 16
 #define TXD2 17
-#define STATUS_LED 2 // LoRaWAN Status LED
+#define STATUS_LED 2 // LoRaWAN Send Status
 
 HardwareSerial LoRaSerial(2);
 SMW_SX1276M0 lorawan(LoRaSerial);
@@ -57,32 +53,31 @@ const unsigned long PAUSE_TIME = 60000; // [ms] (3 min)
 unsigned long timeout;
 int count = 0;
 
-#define DATA_FREQUENCY_LENGTH 2
-
-struct Data {
-  float temperature;
-};
-RTC_DATA_ATTR int bootCount = 0;
-RTC_DATA_ATTR struct Data myData[DATA_FREQUENCY_LENGTH]; // 4x15min = 1 hour
-#define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  10        /* Time ESP32 will go to sleep (in seconds) */
+// Storing data on deep sleep
+struct Package {
+  float temperature, humidity, pressure, uv, windDirection, windSpeed, rain;
+} WE_Package;
 /*================================ FUNCTIONS ================================*/
+
 // Prototype
 void event_handler(Event);
 
-// DHT11 - Temperature
+// Get the temperature from the DHT11 sensor
+//  @returns The float temperature (ºC)
 float getTemperature()
 {
   return dht.readTemperature();
 }
 
-// DHT11 - Humidity
+// Get the humidity from the DHT11 sensor
+//  @returns The float humidity (%)
 float getHumidity()
 {
   return dht.readHumidity();
 }
 
-// BMP280 - Atmospheric Pressure
+// Get the atmospheric pressure from the BMP280 sensor
+//  @returns The float pressure (hPA)
 float getPressure()
 {
   // bmp.readTemperature();
@@ -109,7 +104,9 @@ int averageAnalogRead(int pinToRead)
   return(runningValue);
 }
 
-// ML8511 - UV Intensity
+// Get the UV radiation intensity from the ML8511 sensor
+//  @param (SensorPIN) : the connected pin on the microcontroller [int]
+//  @returns The float UV intensity (mW/cm²)
 float getUV(int SensorPIN)
 {
   int uvLevel = averageAnalogRead(SensorPIN);
@@ -120,9 +117,12 @@ float getUV(int SensorPIN)
   return uvIntensity;
 }
 
-// PDB10U - Rain Gauge
+// Get the precipitation from the PDB10U rain gauge
+//  @param (SensorPIN) : the connected pin on the microcontroller [int]
+//  @returns The float amount precipitation (mm³)
 float getRain(int SensorPIN)
 {
+  Serial.println("Reading PRECIPITATION...");
   lastMillis = xTaskGetTickCount();
   // It takes RAIN_TIME seconds to measure
   while(xTaskGetTickCount() - lastMillis < RAIN_TIME){
@@ -138,9 +138,11 @@ float getRain(int SensorPIN)
   return REEDCOUNT * 0.5; // every 'clock' = 0.5mm
 }
 
-// MISOL WH-SP-WS01 - Anemometer (Wind Speed Sensor)
+// Get the wind speed from the Anemometer MISOL WH-SP-WS01
+//  @returns The float speed (km/h)
 float getWindSpeed()
 {
+  Serial.println("Reading WIND SPEED...");
   lastMillis = xTaskGetTickCount();
   // It takes WINDSPEED_TIME seconds to measure wind speed
   while(xTaskGetTickCount() - lastMillis < WINDSPEED_TIME){
@@ -161,6 +163,8 @@ float getWindSpeed()
 }
 
 // MISOL WH-SP-WD - Wind Vane (Wind Directtion Sensor)
+// Get the wind speed from the Wind Vane MISOL WH-SP-WD
+//  @returns The float direction (º)
 int getWindDirection()
 {
   wdirRaw = analogRead(VANE_PIN);
@@ -224,27 +228,42 @@ void printData()
   Serial.println("===========================================================");
 }
 
+// Read the weather station variables
+Package readData(){
+  Serial.println("Reading data...");
+  Package p;
+  p.temperature = getTemperature();
+  p.humidity = getHumidity();
+  p.pressure = getPressure();
+  p.uv = getUV(UV_PIN);
+  p.windSpeed = getWindSpeed();
+  p.windDirection = getWindDirection();
+  p.rain = getRain(RAIN_PIN);
+
+  return p;
+}
+
 // Sending JSON data by LoRaWAN module
-void sendData()
+void sendData(Package p)
 {
-  blink(STATUS_LED); // reporting a sent status on LED
   DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
 
-  jsonData["T"] = 19;//getTemperature();
-  jsonData["H"] = 76;//getHumidity();
-  jsonData["P"] = 1019;//getPressure();
-  jsonData["U"] = 3;//getUV(UV_PIN);
-  jsonData["D"] = 270;//getWindDirection();
-  jsonData["S"] = 35;//getWindSpeed();
-  jsonData["R"] = 14;//getRain(RAIN_PIN);
+  jsonData["T"] = (int) p.temperature;
+  jsonData["H"] = (int) p.humidity;
+  jsonData["P"] = (int) p.pressure;
+  jsonData["U"] = (int) p.uv;
+  jsonData["D"] = (int) p.windDirection;
+  jsonData["S"] = (int) p.windSpeed;
+  jsonData["R"] = (int) p.rain;
 
   String payload = "";
   serializeJson(jsonData, payload);
   Serial.print("Data sent: ");
   Serial.println(payload);
-
+  
   // Send a text message
   lorawan.sendT(1, payload);
+  blink(STATUS_LED); // reporting a sent status on LED
 }
 
 // Set LoRaWAN parameters
@@ -308,47 +327,20 @@ void setupLoRaWAN()
   } else {
     Serial.println(F("Error setting the Network Session Key"));
   }
+
   // set the LoRaMAC Region
   response = lorawan.set_Region(REGION_AU915);
-  if(response != CommandResponse::ERROR){
-    Serial.print(F("LoRaMAC Region set ("));
-    Serial.write(REGION_AU915);
-    Serial.println(')');
-  } else {
-    Serial.println(F("Error setting the LoRaMAC Region"));
-  }
+  Serial.print(F("LoRaMAC Region set ("));
+  Serial.write(REGION_AU915);
+  Serial.println(')');
 
   // set the Auto Data Rate (ADR) Configuration
   response = lorawan.set_ADR(SMW_SX1276M0_ADR_ON);
-  if(response == CommandResponse::OK){
-    Serial.print(F("Auto Data Rate ("));
-    Serial.write(SMW_SX1276M0_ADR_ON);
-    Serial.println(')');
-  } else {
-    Serial.println(F("Error setting the Auto Data Rate"));
-  }
+  Serial.print(F("Auto Data Rate ("));
+  Serial.write(SMW_SX1276M0_ADR_ON);
+  Serial.println(')');
 
-  /*
-  // Set the delay between the end of the TX and the Rx Window 1 in ms
-  response = lorawan.set_RX1DL(5000);
-  if(response == CommandResponse::OK){
-    Serial.print(F("Delay RX1 ("));
-    Serial.print(5000);
-    Serial.println(')');
-  } else {
-    Serial.println(F("Error setting the Delay RX1"));
-  }
 
-  // Set the delay between the end of the TX and the Rx Window 1 in ms
-  response = lorawan.set_RX2DL(6000);
-  if(response == CommandResponse::OK){
-    Serial.print(F("Delay RX2 ("));
-    Serial.print(6000);
-    Serial.println(')');
-  } else {
-    Serial.println(F("Error setting the Delay RX2"));
-  }
-  */
   // Set join mode to ABP
   response = lorawan.set_JoinMode(SMW_SX1276M0_JOIN_MODE_ABP);
   if(response == CommandResponse::OK){
@@ -361,103 +353,30 @@ void setupLoRaWAN()
   lorawan.join();
 }
 
-// Print variables readings on Serial Monitor
-void printData_Stored(int bootCount)
-{ 
-  Serial.print("Temperature: "); Serial.print(myData[bootCount].temperature); Serial.println(" °C");
-}
-
-void readData(int bootCount)
-{
-  myData[bootCount].temperature = getTemperature();
-}
-
-void temperatureReading()
-{
-  // Get the maximum and minimum registred temperature 
-  minTemperature = myData[0].temperature;
-  maxTemperature = myData[0].temperature;
-  for (int i = 0; i < DATA_FREQUENCY_LENGTH-1; i++){
-    if (myData[i].temperature < minTemperature){
-      minTemperature = myData[i].temperature;
-    } else if (myData[i].temperature > maxTemperature){
-      maxTemperature = myData[i].temperature;
-    }
-  }
-}
-
-// Sending JSON data by LoRaWAN module
-void sendData2()
-{
-  blink(STATUS_LED); // reporting a sent status on LED
-  DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(3));
-
-  jsonData["T"] = (int) getTemperature();
-  jsonData["H"] = (int) getHumidity();
-  jsonData["P"] = (int) getPressure();
-  //jsonData["U"] = (int) getUV(UV_PIN);
-  //jsonData["D"] = (int) getWindDirection();
-  //jsonData["S"] = (int) getWindSpeed();
-  //jsonData["R"] = (int) getRain(RAIN_PIN);
-
-  String payload = "";
-  serializeJson(jsonData, payload);
-  Serial.print("Data sent: ");
-  Serial.println(payload);
-
-  // Send a text message
-  lorawan.sendT(1, payload);
-}
-
-
 void setup() {
   Serial.begin(115200);
-  //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   /*=============================== SENSORS ===============================*/
-  // Temperature and Humidty Sensor DHT11
   dht.begin();
-  // Pressure Sensor BMP280
   bmp.begin(I2C_ADRESS);
-  // UV Sensor
   pinMode(UV_PIN, INPUT);
-  // Rain gauge sensor
   pinMode (RAIN_PIN, INPUT_PULLUP); //This activates the internal pull up resistor
-  // Wind wane sensor
   pinMode(ANEMOMETER_PIN, INPUT);
-  /*=============================== READING DATA ===============================*/
-  //readData(bootCount);
-  //printData_Stored(bootCount);
-  //bootCount++;
   /*=============================== LORAWAN ===============================*/
   setupLoRaWAN();
 }
 
 void loop() {
-  // listen for incoming data from the module
   lorawan.listen();
-
-  // send a message
+  // Send a message
   if(lorawan.isConnected()){
-    if(timeout < millis()){
-      sendData();
-      // update the timeout
-      timeout = millis() + PAUSE_TIME;
-    }
-  } else {
-    if(timeout < millis()){
-      // show some activity
-      Serial.println('.');
-    
-      // update the timeout
-      timeout = millis() + 5000; // 5 s
-    }
+    WE_Package = readData();
+    sendData(WE_Package);
   }
 }
 
 void event_handler(Event type){
   // check if join event
   if(type == Event::JOINED){
-    digitalWrite(STATUS_LED, HIGH);
     Serial.println(F("Joined"));
   }
 }
