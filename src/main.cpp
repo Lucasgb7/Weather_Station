@@ -7,6 +7,7 @@
 #include "../lib/keys.h"
 #include "RoboCore_SMW_SX1276M0.h"
 #include <Wire.h>
+#include <WiFi.h>
 
 // Temperature/Humidity Sensor (DHT11)
 #define DHTPIN 4
@@ -355,6 +356,11 @@ void setupLoRaWAN()
 
 void setup() {
   Serial.begin(115200);
+  bool bye = WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  btStop();
+  bye = WiFi.setSleep(true);
+  vTaskDelay(pdMS_TO_TICKS(100));
   /*=============================== SENSORS ===============================*/
   dht.begin();
   bmp.begin(I2C_ADRESS);
