@@ -27,7 +27,7 @@ byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 #define RAIN_PIN 35
 int val = 0, old_val = 0;
 RTC_DATA_ATTR int REEDCOUNT = 0;
-const unsigned long RAIN_TIME = 15*60*1000; // measuring time (ms)
+const unsigned long RAIN_TIME = 60*60*1000; // measuring time (ms)
 
 // Anemometer and Wind Vane (MISOL WH-SP-WD e MISOL WH-SP-WS01)
 #define ANEMOMETER_PIN 26
@@ -356,10 +356,10 @@ void setupLoRaWAN()
 
 void setup() {
   Serial.begin(115200);
-  bool bye = WiFi.disconnect(true);
+  WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
   btStop();
-  bye = WiFi.setSleep(true);
+  WiFi.setSleep(true);
   vTaskDelay(pdMS_TO_TICKS(100));
   /*=============================== SENSORS ===============================*/
   dht.begin();
@@ -376,7 +376,10 @@ void loop() {
   // Send a message
   if(lorawan.isConnected()){
     WE_Package = readData();
+    Serial.println(dht.readTemperature());
+    Serial.println(dht.readHumidity());
     sendData(WE_Package);
+    ESP.restart();
   }
 }
 
