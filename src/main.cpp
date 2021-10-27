@@ -128,9 +128,10 @@ float getUV(int SensorPIN)
 float getRain(int SensorPIN)
 {
   Serial.println("Reading PRECIPITATION...");
-  lastMillis = xTaskGetTickCount();
+  //lastMillis = xTaskGetTickCount();
+  lastMillis = millis();
   // It takes RAIN_TIME seconds to measure
-  while(xTaskGetTickCount() - lastMillis < RAIN_TIME){
+  while(millis() - lastMillis < RAIN_TIME){
     val = digitalRead(SensorPIN);
     if (((val == LOW) && (old_val == HIGH)) || ((val == HIGH) && (old_val == LOW))) {  
       delay(10);  // waiting for counting update
@@ -149,8 +150,9 @@ float getWindSpeed()
 {
   Serial.println("Reading WIND SPEED...");
   lastMillis = xTaskGetTickCount();
+  lastMillis = millis();
   // It takes WINDSPEED_TIME seconds to measure wind speed
-  while(xTaskGetTickCount() - lastMillis < WINDSPEED_TIME){
+  while(millis() - lastMillis < WINDSPEED_TIME){
     if(digitalRead(ANEMOMETER_PIN) == HIGH) if(state == false){
         delay(50);
         clicked++;
