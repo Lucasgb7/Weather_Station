@@ -27,7 +27,7 @@ byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 #define RAIN_PIN 35
 int val = 0, old_val = 0;
 RTC_DATA_ATTR int REEDCOUNT = 0;
-const unsigned long RAIN_TIME = 60*60*1000; // measuring time (ms)
+const unsigned long RAIN_TIME = 45*60*1000; // measuring time (ms)
 
 // Anemometer and Wind Vane (MISOL WH-SP-WD e MISOL WH-SP-WS01)
 #define ANEMOMETER_PIN 26
@@ -67,14 +67,18 @@ void event_handler(Event);
 //  @returns The float temperature (ºC)
 float getTemperature()
 {
-  return dht.readTemperature();
+  float dht_temperature = dht.readTemperature();
+  // if the DHT11 returns NaN, return the BMP temperature reading
+  return (isnan(dht_temperature)) ? bmp.readTemperature() : dht_temperature;
 }
 
 // Get the humidity from the DHT11 sensor
 //  @returns The float humidity (%)
 float getHumidity()
 {
-  return dht.readHumidity();
+  float dht_humidity = dht.readHumidity();
+  // if the DHT11 returns NaN, return zero
+  return (isnan(dht_humidity)) ? 0.0 : dht_humidity;
 }
 
 // Get the atmospheric pressure from the BMP280 sensor
@@ -356,6 +360,7 @@ void setupLoRaWAN()
 
 void setup() {
   Serial.begin(115200);
+  // Modem Sleep
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
   btStop();
@@ -365,7 +370,7 @@ void setup() {
   dht.begin();
   bmp.begin(I2C_ADRESS);
   pinMode(UV_PIN, INPUT);
-  pinMode (RAIN_PIN, INPUT_PULLUP); //This activates the internal pull up resistor
+  pinMode(RAIN_PIN, INPUT_PULLUP); //This activates the internal pull up resistor
   pinMode(ANEMOMETER_PIN, INPUT);
   /*=============================== LORAWAN ===============================*/
   setupLoRaWAN();
@@ -375,9 +380,8 @@ void loop() {
   lorawan.listen();
   // Send a message
   if(lorawan.isConnected()){
+    delay(1000);
     WE_Package = readData();
-    Serial.println(dht.readTemperature());
-    Serial.println(dht.readHumidity());
     sendData(WE_Package);
     ESP.restart();
   }
