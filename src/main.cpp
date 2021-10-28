@@ -26,15 +26,16 @@ byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 // Rain Gauge (PDB10U)
 #define RAIN_PIN 35
 int val = 0, old_val = 0;
+int RAIN_COUNT;
 RTC_DATA_ATTR int REEDCOUNT = 0;
-const unsigned long RAIN_TIME = 45*60*1000; // measuring time (ms)
+const unsigned long RAIN_TIME = 10*60*1000; // measuring time (ms)
 
 // Anemometer and Wind Vane (MISOL WH-SP-WD e MISOL WH-SP-WS01)
 #define ANEMOMETER_PIN 26
 #define VANE_PIN 34
 #define CALC_INTERVAL 1000
 boolean state = false;
-const unsigned long WINDSPEED_TIME = 5000; // measuring time (ms)
+const unsigned long WINDSPEED_TIME = 10000; // measuring time (ms)
 unsigned long lastMillis = 0;
 float mps, kph;
 int clicked, wspd, wdir, wdirRaw;
@@ -49,8 +50,6 @@ SMW_SX1276M0 lorawan(LoRaSerial);
 CommandResponse response;
 
 // Keys are included from #include "../lib/keys.h"
-
-const unsigned long PAUSE_TIME = 60000; // [ms] (3 min)
 unsigned long timeout;
 int count = 0;
 
@@ -141,6 +140,7 @@ float getRain(int SensorPIN)
       old_val = val;
     }
   }
+  RAIN_COUNT++;
   return REEDCOUNT * 0.5; // every 'clock' = 0.5mm
 }
 
@@ -367,24 +367,29 @@ void setup() {
   WiFi.mode(WIFI_OFF);
   btStop();
   WiFi.setSleep(true);
-  vTaskDelay(pdMS_TO_TICKS(100));
   /*=============================== SENSORS ===============================*/
+  Serial.println("Setting Sensors...");
   dht.begin();
   bmp.begin(I2C_ADRESS);
   pinMode(UV_PIN, INPUT);
   pinMode(RAIN_PIN, INPUT_PULLUP); //This activates the internal pull up resistor
   pinMode(ANEMOMETER_PIN, INPUT);
+  RAIN_COUNT = 0;
   /*=============================== LORAWAN ===============================*/
-  setupLoRaWAN();
 }
 
 void loop() {
-  lorawan.listen();
-  // Send a message
+  setupLoRaWAN();
+  delay(500);
+
+  lorawan.listen(); // Listen to incoming messages (downlinks)
   if(lorawan.isConnected()){
-    delay(1000);
     WE_Package = readData();
     sendData(WE_Package);
+  }
+  
+  if(RAIN_COUNT > 6){
+    REEDCOUNT = 0;
     ESP.restart();
   }
 }
