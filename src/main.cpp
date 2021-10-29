@@ -26,9 +26,8 @@ byte I2C_ADRESS = 0x76; // '../test/getI2C.ino'.
 // Rain Gauge (PDB10U)
 #define RAIN_PIN 35
 int val = 0, old_val = 0;
-int RAIN_COUNT;
-RTC_DATA_ATTR int REEDCOUNT = 0;
-const unsigned long RAIN_TIME = 10*60*1000; // measuring time (ms)
+int RAIN_COUNT, REEDCOUNT = 0;
+const unsigned long RAIN_TIME = 7*60*1000; // measuring time (ms)
 
 // Anemometer and Wind Vane (MISOL WH-SP-WD e MISOL WH-SP-WS01)
 #define ANEMOMETER_PIN 26
@@ -388,7 +387,7 @@ void loop() {
     sendData(WE_Package);
   }
   
-  if(RAIN_COUNT > 6){
+  if(RAIN_COUNT > 8){
     REEDCOUNT = 0;
     ESP.restart();
   }
