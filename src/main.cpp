@@ -238,13 +238,14 @@ void printData()
 Package readData(){
   Serial.println("Reading data...");
   Package p;
+  
+  p.rain = getRain(RAIN_PIN);
   p.temperature = getTemperature();
   p.humidity = getHumidity();
   p.pressure = getPressure();
   p.uv = getUV(UV_PIN);
   p.windSpeed = getWindSpeed();
   p.windDirection = getWindDirection();
-  p.rain = getRain(RAIN_PIN);
 
   return p;
 }
