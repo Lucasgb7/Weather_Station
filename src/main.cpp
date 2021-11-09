@@ -238,14 +238,13 @@ void printData()
 Package readData(){
   Serial.println("Reading data...");
   Package p;
-  
-  p.rain = getRain(RAIN_PIN);
   p.temperature = getTemperature();
   p.humidity = getHumidity();
   p.pressure = getPressure();
   p.uv = getUV(UV_PIN);
   p.windSpeed = getWindSpeed();
   p.windDirection = getWindDirection();
+  p.rain = getRain(RAIN_PIN);
 
   return p;
 }
@@ -255,13 +254,13 @@ void sendData(Package p)
 {
   DynamicJsonDocument jsonData(JSON_OBJECT_SIZE(7));
 
+  jsonData["R"] = (int) p.rain;
   jsonData["T"] = (int) p.temperature;
   jsonData["H"] = (int) p.humidity;
   jsonData["P"] = (int) p.pressure;
   jsonData["U"] = (int) p.uv;
   jsonData["D"] = (int) p.windDirection;
   jsonData["S"] = (int) p.windSpeed;
-  jsonData["R"] = (int) p.rain;
 
   String payload = "";
   serializeJson(jsonData, payload);
