@@ -2,7 +2,7 @@
 
 A LPWAN Weather Station using LoRaWAN technology. The monitored environment variables are: temperature, humidity, atmospheric pressure, UV intensity, wind speed and wind direction.
 
-Check out the full project building on: [Instructables](https://www.instructables.com/). **(Not yet)**
+Check out the full project building on: [Instructables](https://www.instructables.com/LoRaWAN-Automatic-Weather-Station/).
 
 ## Installation
 
